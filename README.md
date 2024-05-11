@@ -12,9 +12,9 @@ Project planning:
 - [ ] AWS
 - [ ] Mock up a database on e.g., googlesheets to keep safe from cost overruns :|
 - Orchestration - Github actions
-- Data warehouse setup? Dbt? Could use an alternative
+- [ ] Data warehouse setup? Dbt? Could use an alternative
 - [x] Decide on API access method - requests direct pings 
-- Write up scraping script and connect to data store
-- Github actions to orchestrate
+- [ ] Write up scraping script and connect to data store
+- [ ] Setup Github actions to orchestrate
 
 
