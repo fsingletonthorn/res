@@ -42,7 +42,8 @@ access_token=token["access_token"]
 listings = []
 state = 'VIC'
 auth = {"Authorization":"Bearer "+access_token}
-postCode = '3058'
+postCode = ''
+updatedSince = "2024-05-10T00:00:00.000Z"
 pageNumber = 0
 url = "https://api.domain.com.au/v1/listings/residential/_search" # Set destination URL here
 updating = True
@@ -56,6 +57,7 @@ while updating:
       'pageSize': 100,
       'pageNumber': pageNumber,
       "listingType":"Sale",
+      "updatedSince":  updatedSince,
       "locations":[
         {
           "state":state,
@@ -80,9 +82,18 @@ while updating:
         page_size = pd.to_numeric(request.headers['X-Pagination-PageSize'])
         num_records = pd.to_numeric(request.headers['X-Total-Count'])
         total_pages = math.ceil(num_records / page_size)
+
+        # Checking that we are not going beyond the pagination limit
+        if total_pages > 100:
+            raise ValueError('Error: Request returns: ' + str(num_records) + ', total records, narrow search parameters to include all listings')
+
+                # Checking that we are not going beyond the pagination limit
+        if num_records == 0:
+            raise ValueError('Error: Request returns: ' + str(num_records) + ', check search parameters')
+
         # Initializing data store
         listings = request.json()
-    
+
     else:
         listings.extend(request.json())
 
@@ -90,19 +101,25 @@ while updating:
     # Check x-total count, if greater than 1000 narrow search params
     # Check x-total count and iterate through pages if required
     
-    time.sleep(0.15)  # sleep a bit so you don't make too many API calls too quickly  ~ this should prevent us from using more than 10 in a second
+    # sleep a bit so you don't make too many API calls too quickly  ~ this should prevent us from sending more than 10 requests in a second
+    time.sleep(0.1)  
     updating = pageNumber < total_pages
 
+listings_json = pd.json_normalize(listings)
 
-request = requests.get(url,headers=auth)
-r=request.json()
-test = pd.json_normalize(listings)
-test.columns
-out = requests.post(url = 'https://api.domain.com.au/v1/listings/residential/_search',
-    headers = {'accept': 'application/json',
-               'Content-Type': 'application/json',
-               'X-Api-Key': 'key_0b9947c57edbcc7f30770e7a3cea6908'
-               },
-    data= {'locations': [{"state: VIC","postCode: 3058"}]}
-    )
-print(out.request.headers)
+projects = listings_json.loc[listings_json['type'] == 'Project']
+
+property_listings = listings_json.loc[listings_json['type'] == 'PropertyListing']
+
+projects['listings'] 
+## Need to deal with projects that have nested json even after normalization - pd.json_normalize(test.loc[test['type'] == 'Project']['listings'][0])
+project_listings = pd.concat(list(map(pd.json_normalize, projects['listings']))).add_prefix('listing.')
+
+## Getting all project data that are not dupes
+project_metadata = projects[projects.columns[~projects.columns.isin(project_listings.columns)]]
+
+project_listings_w_meta = project_metadata.merge(project_listings, left_on='project.id', right_on='listing.projectId', how = 'left', validate = 'one_to_many')
+
+project_listings_w_meta.drop('listing.projectId', axis = 1)
+
+all_listings = pd.concat([project_listings_w_meta, listings_json], ignore_index = True).drop('listings', axis = 1)
