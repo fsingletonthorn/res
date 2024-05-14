@@ -91,6 +91,9 @@ while updating:
         if num_records == 0:
             raise ValueError('Error: Request returns: ' + str(num_records) + ', check search parameters')
 
+        if pd.to_numeric(request.headers['X-Quota-PerDay-Remaining']) < 1:
+            raise ValueError('Error: ' + request.headers['X-Quota-PerDay-Remaining'] + ' quota per day remaining, no queries left')         
+
         # Initializing data store
         listings = request.json()
 
@@ -105,13 +108,14 @@ while updating:
     time.sleep(0.1)  
     updating = pageNumber < total_pages
 
+
+# Now dealing with the nested data
 listings_json = pd.json_normalize(listings)
 
 projects = listings_json.loc[listings_json['type'] == 'Project']
 
 property_listings = listings_json.loc[listings_json['type'] == 'PropertyListing']
 
-projects['listings'] 
 ## Need to deal with projects that have nested json even after normalization - pd.json_normalize(test.loc[test['type'] == 'Project']['listings'][0])
 project_listings = pd.concat(list(map(pd.json_normalize, projects['listings']))).add_prefix('listing.')
 
@@ -120,6 +124,8 @@ project_metadata = projects[projects.columns[~projects.columns.isin(project_list
 
 project_listings_w_meta = project_metadata.merge(project_listings, left_on='project.id', right_on='listing.projectId', how = 'left', validate = 'one_to_many')
 
+## Dropping dupe col
 project_listings_w_meta.drop('listing.projectId', axis = 1)
 
+# Concatinating all listings together, dropping nested listings col (now joined on)
 all_listings = pd.concat([project_listings_w_meta, listings_json], ignore_index = True).drop('listings', axis = 1)
