@@ -1,5 +1,6 @@
 import json
 import requests
+import datetime
 import re, string, timeit
 import time
 import yaml
@@ -38,38 +39,72 @@ access_token=token["access_token"]
 # request = s.get(url,headers=auth)
 # r=request.json()
 
+def residential_listings_search(access_token, 
+                                session,
+                                page = 1,
+                                postcode = '',
+                                state = '', 
+                                region = '',
+                                area = '', 
+                                listingType = 'Sale', 
+                                updatedSince = (datetime.datetime.today() - datetime.timedelta(days=1)).isoformat()
+                    ):
+    
+    auth = {"Authorization":"Bearer "+access_token}
+
+
+
+        #headers = auth.update(additional_headers)
+    post_fields ={
+      'pageSize': 100,
+      'pageNumber': pageNumber,
+      "listingType":listingType,
+      "updatedSince":  updatedSince,
+      "locations":[
+        {
+          "state":state,
+          "region":region,
+          "area":area,
+          "postCode":postCode,
+          "includeSurroundingSuburbs":False
+        }
+      ]
+    }
+    
+    url = "https://api.domain.com.au/v1/listings/residential/_search"
+
+    request = s.post(url,headers=auth,json=post_fields)
+
+    return request
+
+
 # Looping through available records
 listings = []
-state = 'VIC'
-auth = {"Authorization":"Bearer "+access_token}
+state = ''
 postCode = ''
-updatedSince = "2024-05-10T00:00:00.000Z"
+region = ''
+area = ''
+updatedSince = (datetime.datetime.today() - datetime.timedelta(days=1)).isoformat() + 'Z'# updatedSince = "2024-05-16T10:10:59.104Z"
+listingType = 'Sale'
 pageNumber = 0
-url = "https://api.domain.com.au/v1/listings/residential/_search" # Set destination URL here
+
+ # Set destination URL here
 updating = True
 
 while updating:
 
     pageNumber  += 1
 
-    #headers = auth.update(additional_headers)
-    post_fields ={
-      'pageSize': 100,
-      'pageNumber': pageNumber,
-      "listingType":"Sale",
-      "updatedSince":  updatedSince,
-      "locations":[
-        {
-          "state":state,
-          "region":"",
-          "area":"",
-          "postCode":postCode,
-          "includeSurroundingSuburbs":False
-        }
-      ]
-    }
-
-    request = requests.post(url,headers=auth,json=post_fields)
+    request = residential_listings_search(access_token = access_token, 
+                                session = s,
+                                page = pageNumber,
+                                postcode = '',
+                                state = 'Vic', 
+                                region = '',
+                                area = '', 
+                                listingType = 'Sale', 
+                                updatedSince = (datetime.datetime.today() - datetime.timedelta(days=1)).isoformat()
+                                ) 
 
     # Error out if status code not 200
     if request.status_code != 200:
@@ -84,8 +119,8 @@ while updating:
         total_pages = math.ceil(num_records / page_size)
 
         # Checking that we are not going beyond the pagination limit
-        if total_pages > 100:
-            raise ValueError('Error: Request returns: ' + str(num_records) + ', total records, narrow search parameters to include all listings')
+        if total_pages > 10:
+            raise ValueError('Error: Request returns: ' + str(num_records) + ', total records, narrow search parameters to only include 1000 listings at most to include all listings')
 
                 # Checking that we are not going beyond the pagination limit
         if num_records == 0:
@@ -105,7 +140,7 @@ while updating:
     # Check x-total count and iterate through pages if required
     
     # sleep a bit so you don't make too many API calls too quickly  ~ this should prevent us from sending more than 10 requests in a second
-    time.sleep(0.1)  
+    time.sleep(0.5)  
     updating = pageNumber < total_pages
 
 
@@ -128,4 +163,7 @@ project_listings_w_meta = project_metadata.merge(project_listings, left_on='proj
 project_listings_w_meta.drop('listing.projectId', axis = 1)
 
 # Concatinating all listings together, dropping nested listings col (now joined on)
-all_listings = pd.concat([project_listings_w_meta, listings_json], ignore_index = True).drop('listings', axis = 1)
+all_listings = pd.concat([project_listings_w_meta, property_listings], ignore_index = True).drop('listings', axis = 1)
+
+# example write
+all_listings.to_csv('all_listings_vic.csv')
