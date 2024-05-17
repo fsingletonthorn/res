@@ -41,7 +41,7 @@ access_token=token["access_token"]
 
 def residential_listings_search(access_token, 
                                 session,
-                                page = 1,
+                                page_number = 1,
                                 postcode = '',
                                 state = '', 
                                 region = '',
@@ -52,12 +52,10 @@ def residential_listings_search(access_token,
     
     auth = {"Authorization":"Bearer "+access_token}
 
-
-
-        #headers = auth.update(additional_headers)
-    post_fields ={
+    # Pulling together post fields
+    post_fields = {
       'pageSize': 100,
-      'pageNumber': pageNumber,
+      'pageNumber': page_number,
       "listingType":listingType,
       "updatedSince":  updatedSince,
       "locations":[
@@ -65,7 +63,7 @@ def residential_listings_search(access_token,
           "state":state,
           "region":region,
           "area":area,
-          "postCode":postCode,
+          "postCode":postcode,
           "includeSurroundingSuburbs":False
         }
       ]
@@ -73,7 +71,7 @@ def residential_listings_search(access_token,
     
     url = "https://api.domain.com.au/v1/listings/residential/_search"
 
-    request = s.post(url,headers=auth,json=post_fields)
+    request = session.post(url,headers=auth,json=post_fields)
 
     return request
 
