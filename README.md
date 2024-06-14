@@ -10,9 +10,8 @@ Project planning:
 - Decide on cloud provider
 - [ ] Google Cloud
 - [ ] AWS
-- [ ] Mock up a database on e.g., googlesheets to keep safe from cost overruns :|
-- Orchestration - Github actions
-- [ ] Data warehouse setup? Dbt? Could use an alternative
+- [x] Mock up a "database" -SQLlite
+- [ ] Data pipeline setup? Dbt? Could use an alternative. Total overkill but fun :)
 - [x] Decide on API access method - requests direct pings 
 - [ ] Write up scraping script and connect to data store
 - [ ] Setup Github actions to orchestrate
