@@ -9,8 +9,9 @@ import logging
 import math
 import sqlite3
 from requests.adapters import HTTPAdapter, Retry
-from functions import residential_listings_search
+from functions.domain import residential_listings_search,get_domain_access_token
 
+## Session setup
 s = requests.Session()
 
 retries = Retry(total=5,
@@ -18,70 +19,48 @@ retries = Retry(total=5,
 
 s.mount('http://', HTTPAdapter(max_retries=retries))
 
-# Grabbing access token
-with open('client_credentials.yaml', 'r') as f:
-    doc = yaml.load(f, Loader=yaml.Loader)
+access_token = get_domain_access_token(session=s, client_creds_yml='client_credentials.yaml')
 
-response = s.post('https://auth.domain.com.au/v1/connect/token', 
-                  data = {'client_id':doc[0]['client_id'],
-                          "client_secret":doc[0]['client_secret'],
-                          "grant_type":"client_credentials",
-                          "scope":"api_listings_read",
-                          "Content-Type":"text/json"}
-                )
-
-token=response.json()
-access_token=token["access_token"]
-
-## Example
-# property_id="2014925785"
-# # Getting a single property here
-# url = "https://api.domain.com.au/v1/listings/"+property_id
-# auth = {"Authorization":"Bearer "+access_token}
-# request = s.get(url,headers=auth)
-# r=request.json()
-# Looping through available records
-listings = []
-state = ''
-postCode = ''
-region = ''
-area = ''
-updatedSince = (datetime.datetime.today() - datetime.timedelta(days=1)).isoformat() + 'Z'# updatedSince = "2024-05-16T10:10:59.104Z"
-listingType = 'Sale'
-pageNumber = 0
-
+## Params
 access_token = access_token
 request_session = s
-page_number = pageNumber
 postcode = ''
 state = 'Vic'
 region = ''
 area = ''
 listing_type = 'Sale'
+download_date = datetime.datetime.today().isoformat()
 updated_since = (datetime.datetime.today() - datetime.timedelta(days=1)).isoformat()
 
- # Set destination URL here
+ # Initialising some things
 updating = True
+listings = []
+pageNumber = 0
 
 while updating:
 
     pageNumber  += 1
 
-    request = residential_listings_search.residential_listings_search(
+    request = residential_listings_search(
                                 access_token = access_token, 
                                 request_session = s,
                                 page_number = pageNumber,
-                                postcode = '',
-                                state = 'Vic', 
-                                region = '',
-                                area = '', 
-                                listing_type = 'Sale', 
-                                updated_since = (datetime.datetime.today() - datetime.timedelta(days=1)).isoformat()
+                                postcode = postcode,
+                                state = state, 
+                                region = region,
+                                area = area, 
+                                listing_type = listing_type, 
+                                updated_since = updated_since
                                 )
-
+    
     # Error out if status code not 200
     if request.status_code != 200:
         raise ValueError('Error: Request status code request was: ' + str(request.status_code) + ', not 200')
+
+        # Checking that daily quotas have not been reached
+    if pd.to_numeric(request.headers['X-Quota-PerDay-Remaining']) == 1:
+        raise ValueError('Error: ' + request.headers['X-Quota-PerDay-Remaining'] + ' quota per day remaining, no more queries left')     
+    ## Later, rather than cancelling, return one last result, add a log event, and go through the last event    
 
     # Counting number of pages required here
     if pageNumber == 1:
@@ -95,18 +74,17 @@ while updating:
         if total_pages > 10:
             raise ValueError('Error: Request returns: ' + str(num_records) + ', total records, narrow search parameters to only include 1000 listings at most to include all listings')
 
-                # Checking that we are not going beyond the pagination limit
+        # Checking that we are not going beyond the pagination limit
         if num_records == 0:
             raise ValueError('Error: Request returns: ' + str(num_records) + ', check search parameters')
 
-        if pd.to_numeric(request.headers['X-Quota-PerDay-Remaining']) < 1:
-            raise ValueError('Error: ' + request.headers['X-Quota-PerDay-Remaining'] + ' quota per day remaining, no queries left')         
-
         # Initializing data store
-        listings = request.json()
+        request_json = request.json()
+        listings = request_json
 
     else:
-        listings.extend(request.json())
+        request_json = request.json()
+        listings.extend(request_json)
 
     print('Page ' + str(pageNumber) + ' of ' + str(total_pages) + ' (' + str(len(listings)) + ' of ' + str(num_records) + ' total records downloaded)')
     # Check x-total count, if greater than 1000 narrow search params
@@ -116,6 +94,8 @@ while updating:
     time.sleep(0.5)  
     updating = pageNumber < total_pages
 
+    for i in range(len(listings)): 
+        listings[i]['download_date'] = download_date
 
 # Now dealing with the nested data
 listings_json = pd.json_normalize(listings)
@@ -124,19 +104,30 @@ projects = listings_json.loc[listings_json['type'] == 'Project']
 
 property_listings = listings_json.loc[listings_json['type'] == 'PropertyListing']
 
-## Need to deal with projects that have nested json even after normalization - pd.json_normalize(test.loc[test['type'] == 'Project']['listings'][0])
-project_listings = pd.concat(list(map(pd.json_normalize, projects['listings']))).add_prefix('listing.')
+if len(projects) > 0:
+    ## Need to deal with projects that have nested json even after normalization - pd.json_normalize(test.loc[test['type'] == 'Project']['listings'][0])
+    project_listings = pd.concat(list(map(pd.json_normalize, projects['listings']))).add_prefix('listing.')
 
-## Getting all project data that are not dupes
-project_metadata = projects[projects.columns[~projects.columns.isin(project_listings.columns)]]
+    ## Getting all project data that are not dupes
+    project_metadata = projects[projects.columns[~projects.columns.isin(project_listings.columns)]]
 
-project_listings_w_meta = project_metadata.merge(project_listings, left_on='project.id', right_on='listing.projectId', how = 'left', validate = 'one_to_many')
+    project_listings_w_meta = project_metadata.merge(project_listings, left_on='project.id', right_on='listing.projectId', how = 'left', validate = 'one_to_many')
 
-## Dropping dupe col
-project_listings_w_meta.drop('listing.projectId', axis = 1)
+    ## Dropping dupe col
+    project_listings_w_meta = project_listings_w_meta.drop('listing.projectId', axis = 1)
 
-# Concatinating all listings together, dropping nested listings col (now joined on)
-all_listings = pd.concat([project_listings_w_meta, property_listings], ignore_index = True).drop('listings', axis = 1)
+    # Concatinating all listings together, dropping nested listings col (now joined on)
+    all_listings = pd.concat([project_listings_w_meta, property_listings], ignore_index = True).drop('listings', axis = 1)
+
+elif any(property_listings.columns == 'listings'):
+    all_listings = property_listings.drop('listings', axis = 1)
+else: 
+    all_listings = property_listings
+
+all_listings.columns = (all_listings.columns
+                .str.replace('.', '_', regex=False)
+             )
 
 # example write
-all_listings.to_csv('all_listings_vic.csv')
+all_listings.to_csv(f'data/all_listings_vic_{updated_since}.csv')
+
