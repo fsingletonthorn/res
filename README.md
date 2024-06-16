@@ -10,10 +10,16 @@ Project planning:
 - Decide on cloud provider
 - [ ] Google Cloud
 - [ ] AWS
-- [x] Mock up a "database" -SQLlite
+- [x] Mock up a "database" -SQLlite, but first dump into json files to ingest later (i.e., data lake approach)
 - [ ] Data pipeline setup? Dbt? Could use an alternative. Total overkill but fun :)
 - [x] Decide on API access method - requests direct pings 
-- [ ] Write up scraping script and connect to data store
+- [ ] Decide on workflow and code up
+    - [ ] Access 1000 pages per day
+    - [ ] Order by listed date
+    - [ ] Download from latest listing date to 1000 pages,
+    this will 
+- [ ] Write up download script and connect to data store
 - [ ] Setup Github actions to orchestrate
-
+- [ ] Pull sales data for properties as appropriate
+    - [ ] Decide on approach - e.g., take long list, ping each that hasn't been checked in x days, that has been up for at least x days
 
