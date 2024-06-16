@@ -1,13 +1,13 @@
-import json
+#import json
 import requests
 import datetime
-import re, string, timeit
+#import re, string, timeit
 import time
-import yaml
+#import yaml
 import pandas as pd 
-import logging
+#import logging
 import math
-import sqlite3
+#import sqlite3
 from requests.adapters import HTTPAdapter, Retry
 from functions.domain import residential_listings_search,get_domain_access_token
 
@@ -34,11 +34,9 @@ updated_since = (datetime.datetime.today() - datetime.timedelta(days=1)).isoform
 
  # Initialising some things
 updating = True
-listings = []
 pageNumber = 0
 
 while updating:
-
     pageNumber  += 1
 
     request = residential_listings_search(
@@ -77,13 +75,14 @@ while updating:
         # Checking that we are not going beyond the pagination limit
         if num_records == 0:
             raise ValueError('Error: Request returns: ' + str(num_records) + ', check search parameters')
+ 
+    # Getting Json responses
+    request_json = request.json()  
 
-        # Initializing data store
-        request_json = request.json()
+    # Saving or extending json
+    if pageNumber == 1:
         listings = request_json
-
     else:
-        request_json = request.json()
         listings.extend(request_json)
 
     print('Page ' + str(pageNumber) + ' of ' + str(total_pages) + ' (' + str(len(listings)) + ' of ' + str(num_records) + ' total records downloaded)')
@@ -91,9 +90,10 @@ while updating:
     # Check x-total count and iterate through pages if required
     
     # sleep a bit so you don't make too many API calls too quickly  ~ this should prevent us from sending more than 10 requests in a second
-    time.sleep(0.5)  
+    time.sleep(0.4)  
     updating = pageNumber < total_pages
 
+    # Inserting downloaded date
     for i in range(len(listings)): 
         listings[i]['download_date'] = download_date
 
@@ -128,6 +128,7 @@ all_listings.columns = (all_listings.columns
                 .str.replace('.', '_', regex=False)
              )
 
+all_listings.columns
 # example write
-all_listings.to_csv(f'data/all_listings_vic_{updated_since}.csv')
+all_listings.to_csv(f'data/all_listings_vic_{}-{updated_since}.csv')
 
