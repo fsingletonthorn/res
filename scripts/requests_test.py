@@ -30,7 +30,7 @@ region = ''
 area = ''
 listing_type = 'Sale'
 updated_since = ''#(dt.datetime.today() - dt.timedelta(days=10)).isoformat()
-listed_since = (dt.datetime.today() - dt.timedelta(days=30)).isoformat()
+listed_since = (dt.datetime.today() - dt.timedelta(days=10)).isoformat()
 
 output = residential_listings_search(access_token = access_token,                        
                             request_session = s,
@@ -43,7 +43,9 @@ output = residential_listings_search(access_token = access_token,
                             listed_since = (dt.datetime.today() - dt.timedelta(days=30)).isoformat()) 
 
 # Now dealing with the nested data
-listings = output['listings']
+
+listings = [value for value in output['listings'].values()]
+
 listings_json = pd.json_normalize(listings)
 
 projects = listings_json.loc[listings_json['type'] == 'Project']
@@ -81,3 +83,25 @@ max_listed_since_date = output['max_listed_since_date']
 # example write
 all_listings.to_csv(f'data/all_listings_vic.csv')
 print(f'data/all_listings_vic_')
+
+
+## Input into query table
+{'id': max_id + 1,
+ 'listed_since_date': output['listed_since_date'],
+'max_listed_since_date': output['max_listed_since_date'],
+'postcode': output['postcode'],
+'state': output['state'],
+'region': output['region'],
+'area': output['area'],
+'listing_type': output['listing_type'],
+'updated_since': output['updated_since'],
+'pages_remaining': output['pages_remaining']}
+
+
+
+-- Data modeling
+
+'listing_advertiser_type',
+       'listing_advertiser_id', 'listing_advertiser_name',
+       'listing_advertiser_logoUrl', 'listing_advertiser_preferredColourHex',
+       'listing_advertiser_bannerUrl', 'listing_advertiser_contacts',

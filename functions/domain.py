@@ -157,8 +157,7 @@ def rls_download_10_pages(access_token = None,
 
         download_date = dt.datetime.now(dt.timezone.utc).isoformat()
         
-        request = rls_download_1_page(
-                                    access_token = access_token, 
+        request = rls_download_1_page(access_token = access_token, 
                                     request_session = request_session,
                                     page_number = pageNumber,
                                     postcode = postcode,
@@ -221,19 +220,30 @@ def rls_download_10_pages(access_token = None,
     date_listeds = []
     for listing in listings:
         if listing['type'] == 'Project':
-            for project_listings in listing['listings']:
-                date_listeds.append(pd.to_datetime(project_listings.get('dateListed')))
+            ## We have to ignore the date listeds in projects - although they will get downloaded multiple times
+            ## As the sort by listed date doesn't appear to work for projects (bug in API?)
+            next
+            # for project_listings in listing['listings']:
+            #     date_listeds.append(pd.to_datetime(project_listings.get('dateListed')))
         else: 
             date_listeds.append(pd.to_datetime(listing.get('listing').get('dateListed')))
 
     max_date_listed = pd.array(date_listeds).max()
 
+    # for listing in listings:
+    #     if listing['type'] == 'Project':
+    #         for project_listings in listing['listings']:
+    #             if pd.to_datetime(project_listings.get('dateListed')) == pd.to_datetime('2024-07-04 13:53:58'):
+    #                 print(project_listings)
+    #     else: 
+    #         if pd.to_datetime(listing.get('listing').get('dateListed')) == pd.to_datetime('2024-07-04 13:53:58'):
+    #             print(listing.get('listing'))
+    
     output = {
         'listings': listings,  
         'updated_since': updated_since,
         'listed_since_date': listed_since, 
         'download_date': download_date,
-        'max_listed_since_date': max_date_listed.isoformat(),
         'max_listed_since_date': max_date_listed.isoformat(),
         'daily_quota_remaining': pd.to_numeric(request.headers['X-Quota-PerDay-Remaining']),
         'pages_remaining': total_pages - pageNumber
@@ -259,7 +269,7 @@ def residential_listings_search(access_token = None,
     output = {
         'listed_since_date': original listed since date
         'max_listed_since_date': max returned listed date
-        'listings': listings - list of dicts containing listings
+        'listings': listings - a dict of listings
         'postcode': postcode - original provided by function for tracking
         'state': state - original provided by function for tracking
         'region': region - original provided by function for tracking
@@ -289,10 +299,11 @@ def residential_listings_search(access_token = None,
     listed_since: str, optional
         Listed since filter in iso format, Default = (dt.datetime.today() - dt.timedelta(days=1)).isoformat(), does not filter if left as ''
     """
-    # Loops through listings and uses 
+    # Loops through listings and uses
 
     download_complete = False
     listings_list = list()
+    original_listed_since = listed_since
 
     while not download_complete:
         # Initialising variables
@@ -314,17 +325,21 @@ def residential_listings_search(access_token = None,
             download_complete = True
         else:
             listed_since = listings_w_meta['max_listed_since_date']
-
-        listings = listings_list
+  
     
-    listings = list()
-    for x in listings_list:
-       listings.extend(x['listings'])
+    ## dict method to dedupe from listings and make a big output listing dict
+    listings_dict = dict()
+    for listings in listings_list:
+        for x in listings['listings']:
+            if (x['type'] == 'Project'):
+                listings_dict[f"project_{x['project']['id']}"] = x
+            if (x['type'] == 'PropertyListing'):
+                listings_dict[f"listing_{x['listing']['id']}"] = x
 
     output = {
-        'listed_since_date': listings_list[0]['listed_since_date'],
+        'listed_since_date': original_listed_since,
         'max_listed_since_date': listings_list[len(listings_list)-1]['max_listed_since_date'],
-        'listings': listings,
+        'listings': listings_dict,
         'postcode': postcode,
         'state': state,
         'region': region,
