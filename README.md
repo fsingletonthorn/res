@@ -12,9 +12,9 @@ If you want to start with a blank slate you can either delete  `res_database.db`
 
 Project planning: 
 - Decide on cloud provider
-- [ ] Google Cloud
-- [ ] AWS
-- [x] Mock up a "database" -SQLlite, but first dump into json files to ingest later (i.e., data lake approach)
+    - [ ] Google Cloud
+    - [ ] AWS
+    - [x] Mock up a "database" -SQLlite, but first dump into json files to ingest later (i.e., data lake approach)
 - [ ] Data pipeline setup? Dbt? Could use an alternative. Total overkill but fun :)
 - [x] Decide on API access method - requests direct pings 
 - [ ] Decide on workflow and code up
