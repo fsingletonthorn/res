@@ -203,7 +203,7 @@ def rls_download_10_pages(access_token = None,
             listings.extend(request_json)
 
         # For logging
-        print('Page ' + str(pageNumber) + ' of ' + str(total_pages) + ' (' + str(len(listings)) + ' of ' + str(num_records) + ' total records downloaded)')
+        print('Page ' + str(pageNumber) + ' of ' + str(total_pages) + ' (' + str(len(listings)) + ' of ' + str(num_records) + ' remaining records records downloaded)')
         
         max_pages_downloaded = pageNumber == total_pages
 
