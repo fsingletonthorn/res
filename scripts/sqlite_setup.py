@@ -1,5 +1,26 @@
 import sqlite3
 
+def drop_res_tables(filename):
+    '''A function to drop the RES tables if you want to restart data collection without deleting the database file.
+    Parameters
+    ----------
+    database_loc: sqlite database filepath
+    '''
+    conn = None
+    try:
+        conn = sqlite3.connect(filename)
+        cur = conn.cursor()
+        cur.execute("DROP TABLE download")
+        cur.execute("DROP TABLE raw_listing;")
+    except sqlite3.Error as e:
+        print(e)
+    finally:
+        if conn:
+            conn.execute("VACUUM")
+            conn.close()
+
+# drop_res_tables('res_database.db')
+
 def create_sqlite_database(filename):
     """ create a database connection to an SQLite database """
     conn = None
@@ -15,10 +36,6 @@ def create_sqlite_database(filename):
 if __name__ == '__main__':
     create_sqlite_database("res_database.db")
 
-# if __name__ == '__main__':
-#     database_loc = ("res_database.db")
-
-
 def create_raw_listings_database(database_loc):
     """ create empty tables for raw data
     Parameters
@@ -26,9 +43,9 @@ def create_raw_listings_database(database_loc):
     database_loc: sqlite database filepath
     """
 
-    con = sqlite3.connect(database_loc)
+    conn = sqlite3.connect(database_loc)
 
-    cur = con.cursor()
+    cur = conn.cursor()
 
     cur.execute("""
         create TABLE download (
@@ -117,30 +134,12 @@ def create_raw_listings_database(database_loc):
             ); 
     """)
       
-    con.commit()
-    con.close()
+    conn.commit()
+    conn.close()
 
-def upload_data(listings_with_meta, database_loc):
+if __name__ == '__main__':
+    create_raw_listings_database("res_database.db")
 
-    con = sqlite3.connect(database_loc)
-    cur = con.cursor()
 
-    try:
-        # Begin a transaction
-        con.execute('BEGIN TRANSACTION')
 
-        # Insert a new row into the metadata table
-        cur.execute("INSERT INTO metadata (title, author) VALUES (?, ?)", ('The Great Gatsby', 'F. Scott Fitzgerald'))
-        metadata_id = c.lastrowid
 
-        # Insert a row into the downloaded_items table, using the new metadata_id
-        cur.execute("INSERT INTO downloaded_items (metadata_id, file_path) VALUES (?, ?)", (metadata_id, '/path/to/file.txt'))
-
-        # Commit the transaction
-        con.commit()
-    except sqlite3.Error as e:
-        # Roll back the transaction if an error occurs
-        con.rollback()
-        print(f"An error occurred: {e}")
-    finally:
-        con.close()
