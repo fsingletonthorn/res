@@ -8,6 +8,11 @@ cur.execute("""
             DROP TABLE projects
 ; """)
 
+
+cur.execute("""
+            .tables
+; """)
+
 cur.execute("""
             CREATE TABLE projects (
             id INTEGER PRIMARY KEY AUTOINCREMENT, 
@@ -25,6 +30,12 @@ conn.commit()
 
 ## Read straight to PD
 out = pd.read_sql('select * from projects', conn)
+
+out = pd.read_sql('SELECT * FROM sqlite_master WHERE type="table";', conn)
+
+
+
+
 out = pd.concat([out,out])
 
 ## Writing to db
