@@ -8,7 +8,7 @@ Then, create a new project at https://developer.domain.com.au/projects/,  and se
 
 Once you have created an API key, then create a file in the root directly of this project called `client_credentials.yml`, providing your client credential and client secrete as per  `client_credentials_template.yml`.
 
-If you want to start with a blank slate you can either delete  `res_database.db` and run all the scripts in .
+If you want to start with a blank slate you can either delete  `res_database.db` and run all the scripts in `scripts\sqlite_setup.py`.
 
 Project planning: 
 - Decide on cloud provider
@@ -18,19 +18,17 @@ Project planning:
 - [ ] Data pipeline setup? Dbt? Could use an alternative. Total overkill but fun :)
 - [x] Decide on API access method - requests direct pings 
 - [ ] Decide on workflow and code up
-    - [ ] Access 1000 pages per day
-    - [ ] Order by listed date
-    - [ ] Download from latest listing date to 1000 pages,
-    this will 
-- [ ] Write up download script and connect to data store
+    - [x] Access up to 1000 pages per day
+    - [x] Order by listed date
+    - [x] Download from latest listing date to 1000 pages, then resume downloading from last listed date next day. Error out and stop if there are no records to download. 
+- [x] Write up download script and connect to data store
 - [ ] Setup Github actions to orchestrate
 - [ ] Pull sales data for properties as appropriate
     - [ ] Decide on approach - e.g., take long list, ping each that hasn't been checked in x days, that has been up for at least x days
 
 
 - Plan: 
--- Loop through each state
--- Select all records that were updated after the last listed date in that state's data
+-- Select all records that were updated after the last listed date from the last download
 -- Store all records
--- This will create duplicates, as we're filtering on updated date, but using listing date as the target field
+-- This will create some duplicates due to issues with the last listed date in the database
 -- Not necessarily a problem, will ensure that we're capturing all records and we can dedupe later
