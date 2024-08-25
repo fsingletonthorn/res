@@ -11,10 +11,10 @@ Once you have created an API key, then create a file in the root directly of thi
 If you want to start with a blank slate you can either delete  `res_database.db` and run all the scripts in `scripts\sqlite_setup.py`.
 
 Project planning: 
-- Decide on cloud provider
+- Decide on Warehouse
     - [ ] Google Cloud
     - [ ] AWS
-    - [x] Mock up a "database" -SQLlite, but first dump into json files to ingest later (i.e., data lake approach)
+    - [x] SQLlite with gitlfs ~ should be ok for about a year of data
 - [ ] Data pipeline setup? Dbt? Could use an alternative. Total overkill but fun :)
 - [x] Decide on API access method - requests direct pings 
 - [ ] Decide on workflow and code up
@@ -25,6 +25,7 @@ Project planning:
 - [ ] Setup Github actions to orchestrate
 - [ ] Pull sales data for properties as appropriate
     - [ ] Decide on approach - e.g., take long list, ping each that hasn't been checked in x days, that has been up for at least x days
+    - [ ] Or we could just pull all sales since the last update - looking at usage quotas we're pretty close to being able to do that now
 
 
 - Plan: 
