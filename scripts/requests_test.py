@@ -49,7 +49,7 @@ all_listings = clean_listings(output)
 if len(all_listings) > 0:
     update_listings_tables(output, all_listings)
 
-print(f'{len(all_listings)} records added to raw listing tables, {output["pages_remaining"]}  pages remaining after download completed.')
+print(f'{len(all_listings)} records added to raw listing tables, {output["pages_remaining"]} pages remaining after download completed.')
 
 # Writing to csv
 ## all_listings.to_csv(f'data/all_listings_vic_{dt.date.today().isoformat()}.csv', index = False)
