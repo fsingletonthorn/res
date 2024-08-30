@@ -25,7 +25,7 @@ s.mount('http://', HTTPAdapter(max_retries=retries))
 access_token = get_domain_access_token(session=s, client_creds_yml='client_credentials.yaml')
 
 # Grab metadata from the last download
-latest_metadata = get_last_download_metadata('res_database.db')
+latest_metadata = get_last_download_metadata('res_database.db', listing_type = 'Sold')
 
 ## Grabbing the max listed date from the last download's metadata. This is used to 
 if len(latest_metadata) > 0:
@@ -43,11 +43,10 @@ output = residential_listings_search(access_token = access_token,
                             updated_since = '', #(dt.datetime.today() - dt.timedelta(days=10)).isoformat()
                             listed_since =  listed_since_date)
 
-
 all_listings = clean_listings(output)
 
 if len(all_listings) > 0:
-    update_listings_tables(output, all_listings)
+    update_listings_tables(raw_output= output,cleaned_listings= all_listings)
 
 print(f'{len(all_listings)} records added to raw listing tables, {output["pages_remaining"]} pages remaining after download completed.')
 

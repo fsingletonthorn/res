@@ -43,7 +43,9 @@ def rls_download_1_page(access_token,
                                 area = '', 
                                 listing_type = 'Sale', 
                                 updated_since = '',
-                                listed_since = (dt.datetime.today() - dt.timedelta(days=1)).isoformat()
+                                listed_since = (dt.datetime.today() - dt.timedelta(days=1)).isoformat(),
+                                sort_on_field = 'dateListed',
+                                sort_order = 'Ascending'
                     ):
     """
     A helper function that downloads a single page of results using the domain residential listings search api
@@ -67,6 +69,10 @@ def rls_download_1_page(access_token,
         Updated since in iso format, Default = '', does not filter if left as ''
     listed_since: str, optional
         Listed since filter in iso format, Default = (dt.datetime.today() - dt.timedelta(days=1)).isoformat(), does not filter if left as ''
+    sort_on_field: str, optional
+        Field to use for sorting, default: 'dateListed'. Options: [ Default, Suburb, Price, DateUpdated, InspectionTime, AuctionTime, Proximity, SoldDate, DefaultThenDateUpdated, DateAvailable, DateListed ]
+    sort_order: str, optional
+        Sort order, either 'Ascending' or 'Descending', default = 'Ascending'
     """
 
     auth = {"Authorization":"Bearer "+access_token}
@@ -81,8 +87,8 @@ def rls_download_1_page(access_token,
         "customSort": {
             "elements": [
             {
-                "field": "dateListed",
-                "direction": "Ascending"
+                "field": sort_on_field,
+                "direction": sort_order
             }
             ],
             "boostPrimarySuburbs": False
@@ -113,7 +119,10 @@ def rls_download_10_pages(access_token = None,
                                     area = None,
                                     listing_type = None,
                                     updated_since = None,
-                                    listed_since= None): 
+                                    listed_since= None,
+                                    sort_on_field = 'dateListed',
+                                    sort_order = 'Ascending'
+                                    ): 
     """
     A helper function that downloads a 10 page of results using the domain residential listings search api and the rls_download_1_page function.
     Essentially just a wrapper around that function that loops through up to 10 results and returns: 
@@ -146,6 +155,10 @@ def rls_download_10_pages(access_token = None,
         Updated since in iso format, Default = '', does not filter if left as ''
     listed_since: str, optional
         Listed since filter in iso format, Default = (dt.datetime.today() - dt.timedelta(days=1)).isoformat(), does not filter if left as ''
+    sort_on_field: str, optional
+        Field to use for sorting, default: 'dateListed'. [ Default, Suburb, Price, DateUpdated, InspectionTime, AuctionTime, Proximity, SoldDate, DefaultThenDateUpdated, DateAvailable, DateListed ]
+    sort_order: str, optional
+        Sort order, either 'Ascending' or 'Descending', default = 'Ascending'
     """
     max_pages_downloaded = False
     pageNumber = 0
@@ -166,7 +179,9 @@ def rls_download_10_pages(access_token = None,
                                     area = area, 
                                     listing_type = listing_type, 
                                     updated_since = updated_since,
-                                    listed_since= listed_since
+                                    listed_since= listed_since,
+                                    sort_on_field = sort_on_field,
+                                    sort_order = sort_order
                                     )
         
         # Error out if status code not 200
@@ -230,15 +245,6 @@ def rls_download_10_pages(access_token = None,
 
     max_date_listed = pd.array(date_listeds).max()
 
-    # for listing in listings:
-    #     if listing['type'] == 'Project':
-    #         for project_listings in listing['listings']:
-    #             if pd.to_datetime(project_listings.get('dateListed')) == pd.to_datetime('2024-07-04 13:53:58'):
-    #                 print(project_listings)
-    #     else: 
-    #         if pd.to_datetime(listing.get('listing').get('dateListed')) == pd.to_datetime('2024-07-04 13:53:58'):
-    #             print(listing.get('listing'))
-    
     output = {
         'listings': listings,  
         'updated_since': updated_since,
@@ -260,7 +266,10 @@ def residential_listings_search(access_token = None,
                                     area = None,
                                     listing_type = None,
                                     updated_since = None,
-                                    listed_since= None):
+                                    listed_since= None,
+                                    sort_on_field = 'dateListed',
+                                    sort_order = 'Ascending'
+                                    ):
     """
     A helper function that loops through and downloads all results using the domain residential listings search api and the rls_download_10_page function.
     Essentially just a wrapper around that function that loops through and downloads results until all are downloaded, or until you run out of tokens.
@@ -298,6 +307,10 @@ def residential_listings_search(access_token = None,
         Updated since in iso format, Default = '', does not filter if left as ''
     listed_since: str, optional
         Listed since filter in iso format, Default = (dt.datetime.today() - dt.timedelta(days=1)).isoformat(), does not filter if left as ''
+    sort_on_field: str, optional
+        Field to use for sorting, default: 'dateListed'. [ Default, Suburb, Price, DateUpdated, InspectionTime, AuctionTime, Proximity, SoldDate, DefaultThenDateUpdated, DateAvailable, DateListed ]
+    sort_order: str, optional
+        Sort order, either 'Ascending' or 'Descending', default = 'Ascending'
     """
     # Loops through listings and uses
 
@@ -316,7 +329,10 @@ def residential_listings_search(access_token = None,
                                             area = area, 
                                             listing_type = listing_type, 
                                             updated_since = updated_since,
-                                            listed_since= listed_since)
+                                            listed_since= listed_since,
+                                            sort_on_field = sort_on_field,
+                                            sort_order = sort_order
+                                    )
 
         listings_list.append(listings_w_meta)
 
