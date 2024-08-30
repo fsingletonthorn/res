@@ -307,10 +307,6 @@ def residential_listings_search(access_token = None,
         Updated since in iso format, Default = '', does not filter if left as ''
     listed_since: str, optional
         Listed since filter in iso format, Default = (dt.datetime.today() - dt.timedelta(days=1)).isoformat(), does not filter if left as ''
-    sort_on_field: str, optional
-        Field to use for sorting, default: 'dateListed'. [ Default, Suburb, Price, DateUpdated, InspectionTime, AuctionTime, Proximity, SoldDate, DefaultThenDateUpdated, DateAvailable, DateListed ]
-    sort_order: str, optional
-        Sort order, either 'Ascending' or 'Descending', default = 'Ascending'
     """
     # Loops through listings and uses
 
@@ -329,9 +325,7 @@ def residential_listings_search(access_token = None,
                                             area = area, 
                                             listing_type = listing_type, 
                                             updated_since = updated_since,
-                                            listed_since= listed_since,
-                                            sort_on_field = sort_on_field,
-                                            sort_order = sort_order
+                                            listed_since= listed_since
                                     )
 
         listings_list.append(listings_w_meta)
@@ -342,7 +336,6 @@ def residential_listings_search(access_token = None,
         else:
             listed_since = listings_w_meta['max_listed_since_date']
   
-    
     ## dict method to dedupe from listings and make a big output listing dict
     listings_dict = dict()
     for listings in listings_list:

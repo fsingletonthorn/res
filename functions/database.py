@@ -36,7 +36,7 @@ def get_metadata(database_loc):
     conn.close()
     return(out)
 
-def get_raw_listings(database_loc):
+def get_raw_sale_listings(database_loc):
     """
     A helper function that downloads the download table containing metadata on the downloads that have been completed by RES.
     
@@ -46,7 +46,21 @@ def get_raw_listings(database_loc):
         The filepath to your database including file extension. 
     """
     conn = sqlite3.connect(database_loc)
-    out = pd.read_sql('SELECT * FROM raw_listing;', conn)
+    out = pd.read_sql('SELECT * FROM raw_sale_listing;', conn)
+    conn.close()
+    return(out)
+
+def get_raw_sold_listings(database_loc):
+    """
+    A helper function that downloads the download table containing metadata on the downloads that have been completed by RES.
+    
+    Parameters
+    ----------
+    database_loc: str
+        The filepath to your database including file extension. 
+    """
+    conn = sqlite3.connect(database_loc)
+    out = pd.read_sql('SELECT * FROM raw_sold_listing;', conn)
     conn.close()
     return(out)
 
@@ -79,10 +93,10 @@ def update_listings_tables(raw_output, cleaned_listings):
     all_listings_for_upload['download_id'] = max_download_id['download_id'][0]
 
     if download_meta.listing_type[0] == 'Sale': 
-        all_listings_for_upload.to_sql('raw_listing', conn, if_exists='append', index=False)
+        all_listings_for_upload.to_sql('raw_sale_listing', conn, if_exists='append', index=False)
     elif download_meta.listing_type[0] == 'Sold':
         all_listings_for_upload.to_sql('raw_sold_listing', conn, if_exists='append', index=False)
-    else: 
+    else:
         raise ValueError('download_meta.listing_type not recognized: "' + str(download_meta.listing_type) + '", not "Sale" or "Sold"')        
 
     conn.execute("VACUUM")

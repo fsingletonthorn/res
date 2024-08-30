@@ -1,13 +1,5 @@
-#import json
 import requests
 import datetime as dt
-#import re, string, timeit
-import time
-#import yaml
-import pandas as pd 
-#import logging
-import math
-import sqlite3
 from requests.adapters import HTTPAdapter, Retry
 from functions.domain import get_domain_access_token,residential_listings_search
 from functions.database import get_last_download_metadata, update_listings_tables
@@ -25,7 +17,7 @@ s.mount('http://', HTTPAdapter(max_retries=retries))
 access_token = get_domain_access_token(session=s, client_creds_yml='client_credentials.yaml')
 
 # Grab metadata from the last download
-latest_metadata = get_last_download_metadata('res_database.db', listing_type = 'Sold')
+latest_metadata = get_last_download_metadata('res_database.db', listing_type = 'Sale')
 
 ## Grabbing the max listed date from the last download's metadata. This is used to 
 if len(latest_metadata) > 0:
