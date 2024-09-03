@@ -3,6 +3,7 @@ import datetime as dt
 import pandas as pd
 import math
 import time
+import pytz
 
 # Grabbing access token
 def get_domain_access_token(session, client_creds_yml):
@@ -168,7 +169,8 @@ def rls_download_10_pages(access_token = None,
     while not (max_pages_downloaded | (pageNumber >= 10)):
         pageNumber  += 1
 
-        download_date = dt.datetime.now(dt.timezone.utc).isoformat()
+        tz = pytz.timezone('Australia/Sydney')
+        download_date = dt.datetime.now(tz).isoformat()
         
         request = rls_download_1_page(access_token = access_token, 
                                     request_session = request_session,

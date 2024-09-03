@@ -4,6 +4,7 @@ from requests.adapters import HTTPAdapter, Retry
 from functions.domain import get_domain_access_token,residential_listings_search
 from functions.database import get_last_download_metadata, update_listings_tables
 from functions.helper_functions import clean_listings
+import pytz
 
 ## Session setup
 s = requests.Session()
@@ -19,11 +20,13 @@ access_token = get_domain_access_token(session=s, client_creds_yml='client_crede
 # Grab metadata from the last download
 latest_metadata = get_last_download_metadata('res_database.db', listing_type = 'Sale')
 
-## Grabbing the max listed date from the last download's metadata. This is used to 
+## Grabbing the max listed date from the last download's metadata. This is used to filter down to not-downloaded records.
 if len(latest_metadata) > 0:
     listed_since_date = latest_metadata.max_listed_since_date[0]
-else: 
-    listed_since_date = (dt.datetime.today() - dt.timedelta(days=1)).isoformat()
+else:
+    tz = pytz.timezone('Australia/Sydney')
+    sydney_now = dt.datetime.now(tz)
+    listed_since_date = (sydney_now - dt.timedelta(days=14)).isoformat()
 
 output = residential_listings_search(access_token = access_token,                        
                             request_session = s,

@@ -4,6 +4,7 @@ from requests.adapters import HTTPAdapter, Retry
 from functions.domain import get_domain_access_token,residential_listings_search
 from functions.database import get_last_download_metadata, update_listings_tables
 from functions.helper_functions import clean_listings
+import pytz
 
 ## Session setup
 s = requests.Session()
@@ -23,7 +24,9 @@ latest_metadata = get_last_download_metadata('res_database.db', listing_type = '
 if len(latest_metadata) > 0:
     updated_since_date = latest_metadata.download_date[0]
 else: 
-    updated_since_date = (dt.datetime.today() - dt.timedelta(days=1)).isoformat()
+    tz = pytz.timezone('Australia/Sydney')
+    sydney_now = dt.datetime.now(tz)
+    updated_since_date = (sydney_now - dt.timedelta(days=1)).isoformat()
 
 output = residential_listings_search(access_token = access_token,                        
                             request_session = s,
