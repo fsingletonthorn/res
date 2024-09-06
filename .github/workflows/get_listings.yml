@@ -4,6 +4,7 @@ run-name: ${{ github.actor }} gets listings
 on:
   schedule:
     - cron: '0 14 * * *'  # Runs every day at 2 PM UTC (12 am AEST)
+  workflow_dispatch
 
 jobs:
   get_listings:
