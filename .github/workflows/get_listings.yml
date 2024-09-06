@@ -25,10 +25,7 @@ jobs:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
         run: |
-          python -m scripts.get_sold_listings > get_sale_listings.log 2>&1
-          if [[ $? -ne 0 ]]; then
-            echo "get_sale_listings failed. Check get_sale_listings.log for details."
-          fi
+          python -m scripts.get_sold_listings || echo "get_sold_listings failed with error: $?"
         continue-on-error: true
 
       - name: Run get_sale_listings
@@ -36,10 +33,7 @@ jobs:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
         run: |
-          python -m scripts.get_sale_listings > get_sale_listings.log 2>&1
-          if [[ $? -ne 0 ]]; then
-            echo "get_sale_listings failed. Check get_sale_listings.log for details."
-          fi
+          python -m scripts.get_sale_listings || echo "get_sale_listings failed with error: $?"
         continue-on-error: true
 
       - name: Commit and push changes
