@@ -30,16 +30,12 @@ else:
 
 output = residential_listings_search(access_token = access_token,                        
                             request_session = s,
-                            postcode = '',
-                            state =  '', ##'Vic',
-                            region = '',
-                            area = '',
                             listing_type = 'Sold',
-                            updated_since = updated_since_date, #(dt.datetime.today() - dt.timedelta(days=10)).isoformat()
+                            updated_since = updated_since_date,
                             listed_since =  '')
 
 all_listings = clean_listings(output)
- 
+
 if len(all_listings) > 0:
     update_listings_tables(output, all_listings)
 

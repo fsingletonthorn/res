@@ -1,355 +1,209 @@
-import yaml
-import datetime as dt
-import pandas as pd
-import math
-import time
-import pytz
-
 # Grabbing access token
+import yaml
+import requests
+
 def get_domain_access_token(session, client_creds_yml):
     """
-    A function to get your domain access token, with a requests session and your client credentials. 
-    Returns 
+    Get a Domain API access token using client credentials.
 
     Parameters
     ----------
-    session : requests.sessions.Session
-        A requests session
+    session : requests.Session
+        An active requests session.
     client_creds_yml : str
-        Relative file path to your domain client credentials yml file, use the template at to create your own
+        Path to the YAML file containing client credentials.
+
+    Returns
+    -------
+    str
+        The access token.
+
+    Raises
+    ------
+    ValueError
+        If the credentials file is invalid or the token request fails.
     """
-    with open(client_creds_yml, 'r') as f:
-        doc = yaml.load(f, Loader=yaml.Loader)
+    try:
+        with open(client_creds_yml, 'r') as f:
+            creds = yaml.safe_load(f)
+        
+        if not isinstance(creds, list) or len(creds) == 0 or 'client_id' not in creds[0] or 'client_secret' not in creds[0]:
+            raise ValueError("Invalid credentials file format")
 
-    response = session.post('https://auth.domain.com.au/v1/connect/token', 
-                    data = {'client_id':doc[0]['client_id'],
-                            "client_secret":doc[0]['client_secret'],
-                            "grant_type":"client_credentials",
-                            "scope":"api_listings_read",
-                            "Content-Type":"text/json"}
-                    )
+        response = session.post(
+            'https://auth.domain.com.au/v1/connect/token',
+            data={
+                'client_id': creds[0]['client_id'],
+                'client_secret': creds[0]['client_secret'],
+                'grant_type': 'client_credentials',
+                'scope': 'api_listings_read',
+                'Content-Type': 'text/json'
+            }
+        )
+        response.raise_for_status()
+        return response.json()['access_token']
+    except (yaml.YAMLError, KeyError, requests.RequestException) as e:
+        raise ValueError(f"Failed to obtain access token: {str(e)}")
 
-    token=response.json()
-    access_token=token["access_token"]
+import requests
+import pandas as pd
+import datetime as dt
+import pytz
+import time
+from typing import Dict, Any, List
 
-    return(access_token)
-
-## Residential listings search function
-def rls_download_1_page(access_token, 
-                                request_session,
-                                page_number = 1,
-                                postcode = '',
-                                state = '', 
-                                region = '',
-                                area = '', 
-                                listing_type = 'Sale', 
-                                updated_since = '',
-                                listed_since = (dt.datetime.today() - dt.timedelta(days=1)).isoformat(),
-                                sort_on_field = 'dateListed',
-                                sort_order = 'Ascending'
-                    ):
+def residential_listings_search(
+    access_token: str,
+    request_session: requests.Session,
+    postcode: str = '',
+    state: str = '',
+    region: str = '',
+    area: str = '',
+    listing_type: str = 'Sale',
+    updated_since: str = '',
+    listed_since: str = '',
+    verbose: bool = True
+) -> Dict[str, Any]:
     """
-    A helper function that downloads a single page of results using the domain residential listings search api
-    
+    Search for residential listings using the Domain API, downloading all available results.
+
+    This function combines the functionality of rls_download_1_page, rls_download_10_pages,
+    and the original residential_listings_search into a single, more efficient function.
+
     Parameters
     ----------
-    access_token: str
-        your domain API access token generated using get_domain_access_token()
-    request_session : requests.sessions.Session
-        An open requests session
-    page_number: int, optional
-        The page number to download, must be 1-10, default 1
-    postcode: str, optional
-        An Australian postcode as a string. If invalid or there are no listings will return no results.
+    access_token : str
+        Domain API access token.
+    request_session : requests.Session
+        An active requests session.
+    postcode : str, optional
+        Australian postcode to search.
     state : str, optional
+        State to search.
     region : str, optional
+        Region to search.
     area : str, optional
+        Area to search.
     listing_type : str, optional
-        Default = 'Sale' 
-    updated_since: str, optional
-        Updated since in iso format, Default = '', does not filter if left as ''
-    listed_since: str, optional
-        Listed since filter in iso format, Default = (dt.datetime.today() - dt.timedelta(days=1)).isoformat(), does not filter if left as ''
-    sort_on_field: str, optional
-        Field to use for sorting, default: 'dateListed'. Options: [ Default, Suburb, Price, DateUpdated, InspectionTime, AuctionTime, Proximity, SoldDate, DefaultThenDateUpdated, DateAvailable, DateListed ]
-    sort_order: str, optional
-        Sort order, either 'Ascending' or 'Descending', default = 'Ascending'
+        Type of listing (default is 'Sale').
+    updated_since : str, optional
+        Filter for listings updated since this date (ISO format).
+    listed_since : str, optional
+        Filter for listings listed since this date (ISO format).
+    sort_on_field : str, optional
+        Field to sort results by (default is 'dateListed').
+    sort_order : str, optional
+        Sort order, either 'Ascending' or 'Descending' (default is 'Ascending').
+    verbose: bool, optional
+        Whether to print download counts and remaining download counts. 
+        
+    Returns
+    -------
+    Dict[str, Any]
+        Dictionary containing all listings and metadata.
     """
 
-    auth = {"Authorization":"Bearer "+access_token}
+    tz = pytz.timezone('Australia/Sydney')
+    download_date = dt.datetime.now(tz).isoformat()
+    batch_listed_since = listed_since
 
-    # Pulling together post fields
-    post_fields = {
-        'pageSize': 100,
-        'pageNumber': page_number,
-        "listingType": listing_type,
-        "updatedSince": updated_since,
-        "listedSince": listed_since,
-        "customSort": {
-            "elements": [
-            {
-                "field": sort_on_field,
-                "direction": sort_order
-            }
-            ],
-            "boostPrimarySuburbs": False
-        },
-        "locations":[
-            {
-            "state":state,
-            "region":region,
-            "area":area,
-            "postCode":postcode,
-            "includeSurroundingSuburbs":False
-            }
-        ]
+    def download_page(page_number: int, batch_listed_since: str) -> requests.Response:
+        url = "https://api.domain.com.au/v1/listings/residential/_search"
+        headers = {"Authorization": f"Bearer {access_token}"}
+        payload = {
+            'pageSize': 100,
+            'pageNumber': page_number,
+            "listingType": listing_type,
+            "updatedSince": updated_since,
+            ## Going back one second to make sure we don't miss things
+            "listedSince": batch_listed_since,
+            "customSort": {
+                "elements": [{"field": 'dateListed', "direction": 'Ascending'}],
+                "boostPrimarySuburbs": False
+            },
+            "locations": [{
+                "state": state,
+                "region": region,
+                "area": area,
+                "postCode": postcode,
+                "includeSurroundingSuburbs": False
+            }]
         }
+        return request_session.post(url, headers=headers, json=payload)
+
+    all_listings: List[Dict[str, Any]] = []
+    max_date_listed = None
+    total_count = 0
+    overall_page_number = 0
     
-    url = "https://api.domain.com.au/v1/listings/residential/_search"
+    while True:
+        batch_listings = []
+        if batch_listed_since != '':
+            (dt.datetime.fromisoformat(batch_listed_since) - dt.timedelta(seconds=1)).isoformat()
 
-    request = request_session.post(url,headers=auth,json=post_fields)
-
-    return request
-
-## Loop to download 10 pages and gather metadata on listings
-def rls_download_10_pages(access_token = None, 
-                                    request_session = None,
-                                    postcode = None,
-                                    state = None,
-                                    region = None,
-                                    area = None,
-                                    listing_type = None,
-                                    updated_since = None,
-                                    listed_since= None,
-                                    sort_on_field = 'dateListed',
-                                    sort_order = 'Ascending'
-                                    ): 
-    """
-    A helper function that downloads a 10 page of results using the domain residential listings search api and the rls_download_1_page function.
-    Essentially just a wrapper around that function that loops through up to 10 results and returns: 
-        output = {
-        'listings': listings,  
-        'updated_since': updated_since,
-        'listed_since_date': listed_since, 
-        'download_date': download_date,
-        'max_listed_since_date': max_date_listed,
-        'daily_quota_remaining': pd.to_numeric(request.headers['X-Quota-PerDay-Remaining']),
-        'pages_remaining': total_pages - pageNumber
-    }
-    
-    Parameters
-    ----------
-    access_token: str
-        your domain API access token generated using get_domain_access_token()
-    request_session : requests.sessions.Session
-        An open requests session
-    page_number: int, optional
-        The page number to download, must be 1-10, default 1
-    postcode: str, optional
-        An Australian postcode as a string. If invalid or there are no listings will return no results.
-    state : str, optional
-    region : str, optional
-    area : str, optional
-    listing_type : str, optional
-        Default = 'Sale' 
-    updated_since: str, optional
-        Updated since in iso format, Default = '', does not filter if left as ''
-    listed_since: str, optional
-        Listed since filter in iso format, Default = (dt.datetime.today() - dt.timedelta(days=1)).isoformat(), does not filter if left as ''
-    sort_on_field: str, optional
-        Field to use for sorting, default: 'dateListed'. [ Default, Suburb, Price, DateUpdated, InspectionTime, AuctionTime, Proximity, SoldDate, DefaultThenDateUpdated, DateAvailable, DateListed ]
-    sort_order: str, optional
-        Sort order, either 'Ascending' or 'Descending', default = 'Ascending'
-    """
-    max_pages_downloaded = False
-    pageNumber = 0
-    output = {}
-
-    # Downloading up to 10 pages of listings
-    while not (max_pages_downloaded | (pageNumber >= 10)):
-        pageNumber  += 1
-
-        tz = pytz.timezone('Australia/Sydney')
-        download_date = dt.datetime.now(tz).isoformat()
-        
-        request = rls_download_1_page(access_token = access_token, 
-                                    request_session = request_session,
-                                    page_number = pageNumber,
-                                    postcode = postcode,
-                                    state = state, 
-                                    region = region,
-                                    area = area, 
-                                    listing_type = listing_type, 
-                                    updated_since = updated_since,
-                                    listed_since= listed_since,
-                                    sort_on_field = sort_on_field,
-                                    sort_order = sort_order
-                                    )
-        
-        # Error out if status code not 200
-        if request.status_code != 200:
-            raise ValueError('Error: Request status code request was: ' + str(request.status_code) + ', not 200')
-
-        # Counting number of pages required here
-        if pageNumber == 1:
+        for page_in_batch in range(1, 11):  # API limit of 10 pages per query
+            overall_page_number += 1
+            response = download_page(page_in_batch, batch_listed_since)
+            response.raise_for_status()
             
-            # Calculations for number of loops
-            page_size = pd.to_numeric(request.headers['X-Pagination-PageSize'])
-            num_records = pd.to_numeric(request.headers['X-Total-Count'])
-            total_pages = math.ceil(num_records / page_size)
-
-            # Checking that we are not going beyond the pagination limit
-        # if total_pages > 10:
-        #     raise ValueError('Error: Request returns: ' + str(num_records) + ', total records, narrow search parameters to only include 1000 listings at most to include all listings')
-
-            # Checking that we are not going beyond the pagination limit
-            if num_records == 0:
-                raise ValueError('Error: Request returns: ' + str(num_records) + ' records, check search parameters')
-    
-        # Getting Json responses
-        request_json = request.json()
-
-        # # Inserting downloaded date
-        for i in range(len(request_json)): 
-            request_json[i]['download_date'] = download_date
-
-        # Saving or extending json
-        if pageNumber == 1:
-            listings = request_json
-        else:
-            listings.extend(request_json)
-
-        # For logging
-        print('Page ' + str(pageNumber) + ' of ' + str(total_pages) + ' (' + str(len(listings)) + ' of ' + str(num_records) + ' remaining records records downloaded)')
+            current_total_count = int(response.headers['X-Total-Count'])
+            if current_total_count > total_count:
+                total_count = current_total_count
+            
+            if overall_page_number == 1 and total_count == 0:
+                raise ValueError('Error: Request returns 0 records, check search parameters')
+            
+            listings = response.json()
+            for listing in listings:
+                listing['download_date'] = download_date
+            batch_listings.extend(listings)
+            
+            records_downloaded = len(all_listings) + len(batch_listings)
+            remaining_records = max(0, total_count - records_downloaded)
+            total_pages = -(-total_count // int(response.headers['X-Pagination-PageSize']))  # Ceiling division
+            
+            if verbose:
+               print(f'Page {overall_page_number} of {total_pages} ({records_downloaded} of {total_count} records downloaded, {remaining_records} remaining)')
+            
+            if int(response.headers['X-Pagination-PageSize']) * page_in_batch >= current_total_count or int(response.headers['X-Quota-PerDay-Remaining']) == 0:
+                break
+            
+            time.sleep(0.5)  # Rate limiting
         
-        max_pages_downloaded = pageNumber == total_pages
-
-                # Checking that daily quotas have not been reached
-        if pd.to_numeric(request.headers['X-Quota-PerDay-Remaining']) == 0:
-            print('X-Quota-PerDay-Remaining = 0')
-            max_pages_downloaded = True
+        # Process the batch
+        for listing in batch_listings:
+            if listing['type'] != 'Project':
+                date_listed = pd.to_datetime(listing.get('listing', {}).get('dateListed'))
+                if date_listed:
+                    max_date_listed = max(max_date_listed, date_listed) if max_date_listed else date_listed
         
-        if not max_pages_downloaded:
-            time.sleep(0.5)
+        all_listings.extend(batch_listings)
+        
+        pages_remaining = max(0, total_pages - overall_page_number)
+        daily_quota_remaining = int(response.headers['X-Quota-PerDay-Remaining'])
+
+        if verbose: 
+            print(f'Pages remaining: {pages_remaining}, Daily quota remaining: {daily_quota_remaining}')
+        
+        # Check if we've retrieved all listings
+        if len(all_listings) >= total_count or daily_quota_remaining == 0:
+            break
+        
+        # Update listed_since for the next batch
+        if max_date_listed:
+            batch_listed_since = max_date_listed.isoformat()
     
-    ## Cleanup and metadata
-    ## Dealing with nested listed dates
-    date_listeds = []
-    for listing in listings:
-        if listing['type'] == 'Project':
-            ## We have to ignore the date listeds in projects - although they will get downloaded multiple times
-            ## As the sort by listed date doesn't appear to work for projects (bug in API?)
-            next
-            # for project_listings in listing['listings']:
-            #     date_listeds.append(pd.to_datetime(project_listings.get('dateListed')))
-        else: 
-            date_listeds.append(pd.to_datetime(listing.get('listing').get('dateListed')))
-
-    max_date_listed = pd.array(date_listeds).max()
-
-    output = {
-        'listings': listings,  
-        'updated_since': updated_since,
-        'listed_since_date': listed_since, 
-        'download_date': download_date,
-        'max_listed_since_date': max_date_listed.isoformat(),
-        'daily_quota_remaining': pd.to_numeric(request.headers['X-Quota-PerDay-Remaining']),
-        'pages_remaining': total_pages - pageNumber
-    }
-
-    return(output)
-
-## Loop to download 10 pages and gather metadata on listings
-def residential_listings_search(access_token = None, 
-                                    request_session = None,
-                                    postcode = None,
-                                    state = None,
-                                    region = None,
-                                    area = None,
-                                    listing_type = None,
-                                    updated_since = None,
-                                    listed_since= None,
-                                    sort_on_field = 'dateListed',
-                                    sort_order = 'Ascending'
-                                    ):
-    """
-    A helper function that loops through and downloads all results using the domain residential listings search api and the rls_download_10_page function.
-    Essentially just a wrapper around that function that loops through and downloads results until all are downloaded, or until you run out of tokens.
-
-    Function returns a list that contains the first listed since date used, and the max listed date: 
-    output = {
-        'listed_since_date': original listed since date
-        'max_listed_since_date': max returned listed date
-        'listings': listings - a dict of listings
-        'postcode': postcode - original provided by function for tracking
-        'state': state - original provided by function for tracking
-        'region': region - original provided by function for tracking
-        'area': area- original provided by function for tracking
-        'listing_type': listing_type - original provided by function for tracking
-        'updated_since': updated_since- original provided by function for tracking 
-        'pages_remaining': pages of results remaining when function ends
-    }
+    # Deduplicate listings
+    listings_dict = {}
+    for item in all_listings:
+        if item['type'] == 'Project':
+            listings_dict[f"project_{item['project']['id']}"] = item
+        elif item['type'] == 'PropertyListing':
+            listings_dict[f"listing_{item['listing']['id']}"] = item
     
-    Parameters
-    ----------
-    access_token: str
-        your domain API access token generated using get_domain_access_token()
-    request_session : requests.sessions.Session
-        An open requests session
-    page_number: int, optional
-        The page number to download, must be 1-10, default 1
-    postcode: str, optional
-        An Australian postcode as a string. If invalid or there are no listings will return no results.
-    state : str, optional
-    region : str, optional
-    area : str, optional
-    listing_type : str, optional
-        Default = 'Sale' 
-    updated_since: str, optional
-        Updated since in iso format, Default = '', does not filter if left as ''
-    listed_since: str, optional
-        Listed since filter in iso format, Default = (dt.datetime.today() - dt.timedelta(days=1)).isoformat(), does not filter if left as ''
-    """
-    # Loops through listings and uses
-
-    download_complete = False
-    listings_list = list()
-    original_listed_since = listed_since
-
-    while not download_complete:
-        # Initialising variables
-
-        listings_w_meta = rls_download_10_pages(access_token = access_token, 
-                                            request_session = request_session,
-                                            postcode = postcode,
-                                            state = state, 
-                                            region = region,
-                                            area = area, 
-                                            listing_type = listing_type, 
-                                            updated_since = updated_since,
-                                            listed_since= listed_since
-                                    )
-
-        listings_list.append(listings_w_meta)
-
-        print("Pages remaining: " + str(listings_w_meta['pages_remaining']) + ', Daily quota remaining: ' + str(listings_w_meta['daily_quota_remaining']) )  
-        if (listings_w_meta['pages_remaining'] == 0) | (listings_w_meta['daily_quota_remaining'] == 0):
-            download_complete = True
-        else:
-            listed_since = listings_w_meta['max_listed_since_date']
-  
-    ## dict method to dedupe from listings and make a big output listing dict
-    listings_dict = dict()
-    for listings in listings_list:
-        for x in listings['listings']:
-            if (x['type'] == 'Project'):
-                listings_dict[f"project_{x['project']['id']}"] = x
-            if (x['type'] == 'PropertyListing'):
-                listings_dict[f"listing_{x['listing']['id']}"] = x
-
-    output = {
-        'listed_since_date': original_listed_since,
-        'max_listed_since_date': listings_list[len(listings_list)-1]['max_listed_since_date'],
+    return {
+        'listed_since_date': listed_since,
+        'max_listed_since_date': max_date_listed.isoformat() if max_date_listed else None,
         'listings': listings_dict,
         'postcode': postcode,
         'state': state,
@@ -357,7 +211,8 @@ def residential_listings_search(access_token = None,
         'area': area,
         'listing_type': listing_type,
         'updated_since': updated_since,
-        'pages_remaining': listings_list[len(listings_list)-1]['pages_remaining']
+        'pages_remaining': pages_remaining,
+        'total_listings_retrieved': len(all_listings),
+        'total_unique_listings': len(listings_dict),
+        'total_pages_processed': overall_page_number
     }
-
-    return(output)
