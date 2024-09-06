@@ -25,7 +25,7 @@ jobs:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
         run: |
-          python -m scripts.get_sold_listings || echo "get_sold_listings failed with error: $?"
+          python -m scripts.get_sold_listings | tee get_sold_listings.log
         continue-on-error: true
 
       - name: Run get_sale_listings
@@ -33,7 +33,7 @@ jobs:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
         run: |
-          python -m scripts.get_sale_listings || echo "get_sale_listings failed with error: $?"
+          python -m scripts.get_sale_listings  | tee get_sale_listings.log
         continue-on-error: true
 
       - name: Commit and push changes
