@@ -1,7 +1,9 @@
 name: Get Listings
 run-name: ${{ github.actor }} gets listings
 
-on: [push]
+on:
+  schedule:
+    - cron: '0 20 * * *'  # Runs every day at 8 PM UTC (3 PM AEST)
 
 jobs:
   get_listings:
