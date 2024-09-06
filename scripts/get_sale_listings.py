@@ -41,12 +41,6 @@ output = residential_listings_search(access_token = access_token,
 
 all_listings = clean_listings(output)
 
-
-print(f"Checking database file: {'res_database'}")
-print(f"Checking database file: {'res_database'}")
-print(f"Exists: {os.path.exists('res_database.db')}")
-print(f"Size: {os.path.getsize('res_database.db') if os.path.exists(db_path) else 'File does not exist'}")
-
 if len(all_listings) > 0:
     update_listings_tables(raw_output= output,cleaned_listings= all_listings)
 
