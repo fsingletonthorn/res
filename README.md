@@ -6,9 +6,9 @@ To access the Domain APIs you will need to first sign up for a developer account
 
 Then, create a new project at https://developer.domain.com.au/projects/,  and set up credentials for your project in the Projects tab. The easiest way to consistently access this project - although not the most secure - is via a simple API key.
 
-Once you have created an API key, then create a file in the root directly of this project called `client_credentials.yml`, providing your client credential and client secrete as per  `client_credentials_template.yml`.
+Once you have created an API key, then add your `client_id` and `client_secret` to your environment variables.
 
-If you want to start with a blank slate you can either delete  `res_database.db` and run all the scripts in `scripts\sqlite_setup.py`.
+If you want to start with a blank slate you can delete  `res_database.db` and run all the scripts in `scripts\sqlite_setup.py`.
 
 Project planning: 
 - Decide on Warehouse
