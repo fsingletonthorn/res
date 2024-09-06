@@ -16,7 +16,7 @@ retries = Retry(total=5,
 s.mount('http://', HTTPAdapter(max_retries=retries))
 
 # Grab domain access token
-access_token = get_domain_access_token(session=s, client_id= os.environ["client_id"], client_secret=os.environ["client_secret"])
+access_token = get_domain_access_token(session=s, client_id= os.environ["CLIENT_ID"], client_secret=os.environ["CLIENT_SECRET"])
 
 # Grab metadata from the last download
 latest_metadata = get_last_download_metadata('res_database.db', listing_type = 'Sale')
