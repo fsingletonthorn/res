@@ -2,7 +2,7 @@
 import yaml
 import requests
 
-def get_domain_access_token(session, client_creds_yml):
+def get_domain_access_token(session, client_id, client_secret):
     """
     Get a Domain API access token using client credentials.
 
@@ -23,18 +23,12 @@ def get_domain_access_token(session, client_creds_yml):
     ValueError
         If the credentials file is invalid or the token request fails.
     """
-    try:
-        with open(client_creds_yml, 'r') as f:
-            creds = yaml.safe_load(f)
-        
-        if not isinstance(creds, list) or len(creds) == 0 or 'client_id' not in creds[0] or 'client_secret' not in creds[0]:
-            raise ValueError("Invalid credentials file format")
-
+    try: 
         response = session.post(
             'https://auth.domain.com.au/v1/connect/token',
             data={
-                'client_id': creds[0]['client_id'],
-                'client_secret': creds[0]['client_secret'],
+                'client_id': client_id,
+                'client_secret': client_secret,
                 'grant_type': 'client_credentials',
                 'scope': 'api_listings_read',
                 'Content-Type': 'text/json'
@@ -42,7 +36,7 @@ def get_domain_access_token(session, client_creds_yml):
         )
         response.raise_for_status()
         return response.json()['access_token']
-    except (yaml.YAMLError, KeyError, requests.RequestException) as e:
+    except (requests.RequestException) as e:
         raise ValueError(f"Failed to obtain access token: {str(e)}")
 
 import requests

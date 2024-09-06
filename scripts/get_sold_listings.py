@@ -5,6 +5,7 @@ from functions.domain import get_domain_access_token,residential_listings_search
 from functions.database import get_last_download_metadata, update_listings_tables
 from functions.helper_functions import clean_listings
 import pytz
+import os
 
 ## Session setup
 s = requests.Session()
@@ -15,7 +16,7 @@ retries = Retry(total=5,
 s.mount('http://', HTTPAdapter(max_retries=retries))
 
 # Grab domain access token
-access_token = get_domain_access_token(session=s, client_creds_yml='client_credentials.yaml')
+access_token = get_domain_access_token(session=s, client_id= os.environ["client_id"], client_secret=os.environ["client_secret"])
 
 # Grab metadata from the last download
 latest_metadata = get_last_download_metadata('res_database.db', listing_type = 'Sold')
