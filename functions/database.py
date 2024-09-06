@@ -1,6 +1,7 @@
 import sqlite3
 import pandas as pd
 import datetime as dt
+import pytz
 
 # Grab last uploaded date: 
 ## Get parameters
@@ -68,8 +69,12 @@ def update_listings_tables(raw_output, cleaned_listings):
     conn = sqlite3.connect("res_database.db")
     cur = conn.cursor()
 
+    tz = pytz.timezone('Australia/Sydney')
+    sydney_now = dt.datetime.now(tz)
+    listed_since_date = sydney_now
+
     download_meta = pd.DataFrame({
-        'download_date': [dt.datetime.today().isoformat()], 
+        'download_date': [listed_since_date.isoformat()], 
         'listed_since_date': [raw_output['listed_since_date']],
         'max_listed_since_date': [raw_output['max_listed_since_date']],
         'postcode': [raw_output['postcode']],
