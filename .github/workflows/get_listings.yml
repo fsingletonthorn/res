@@ -34,7 +34,7 @@ jobs:
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          MOTHERDUCK_TOKEN:  ${{ secrets.CLIENT_SECRET }}
+          MOTHERDUCK_TOKEN:  ${{ secrets.MOTHERDUCK_TOKEN }}
         run: |
           python -m scripts.get_sold_listings
         continue-on-error: true
@@ -43,7 +43,7 @@ jobs:
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          MOTHERDUCK_TOKEN:  ${{ secrets.CLIENT_SECRET }}
+          MOTHERDUCK_TOKEN:  ${{ secrets.MOTHERDUCK_TOKEN }}
         run: |
           python -m scripts.get_sale_listings
         continue-on-error: true
