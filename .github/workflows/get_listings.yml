@@ -34,6 +34,7 @@ jobs:
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          MOTHERDUCK_TOKEN:  ${{ secrets.CLIENT_SECRET }}
         run: |
           python -m scripts.get_sold_listings
         continue-on-error: true
@@ -42,16 +43,7 @@ jobs:
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          MOTHERDUCK_TOKEN:  ${{ secrets.CLIENT_SECRET }}
         run: |
           python -m scripts.get_sale_listings
         continue-on-error: true
-
-      - name: Commit and push changes
-        run: |
-          git config --local user.name "${{ github.actor }}"
-          git config --local user.email "${{ github.actor }}@users.noreply.github.com"
-          git add res_database.db
-          git commit -m "Automated update from GitHub Actions" || echo "No changes to commit"
-          git push origin ${{ github.ref }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

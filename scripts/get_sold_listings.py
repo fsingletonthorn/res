@@ -19,7 +19,7 @@ s.mount('http://', HTTPAdapter(max_retries=retries))
 access_token = get_domain_access_token(session=s, client_id= os.environ["CLIENT_ID"], client_secret=os.environ["CLIENT_SECRET"])
 
 # Grab metadata from the last download
-latest_metadata = get_last_download_metadata('res_database.db', listing_type = 'Sold')
+latest_metadata =  get_last_download_metadata(listing_type = 'Sold', md_token=os.environ["MOTHERDUCK_TOKEN"])
 
 ## Grabbing the last downloaded date from the last download's metadata. This is used to set when we download from. 
 if len(latest_metadata) > 0:
@@ -27,7 +27,7 @@ if len(latest_metadata) > 0:
 else: 
     tz = pytz.timezone('Australia/Sydney')
     sydney_now = dt.datetime.now(tz)
-    updated_since_date = (sydney_now - dt.timedelta(days=1)).isoformat()
+    updated_since_date = (sydney_now - dt.timedelta(days=14)).isoformat()
 
 output = residential_listings_search(access_token = access_token,                        
                             request_session = s,

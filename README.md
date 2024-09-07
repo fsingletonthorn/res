@@ -14,7 +14,8 @@ Project planning:
 - Decide on Warehouse
     - [ ] Google Cloud
     - [ ] AWS
-    - [x] SQLlite with gitlfs ~ should be ok for about a year of data
+    - [ ] ~SQLlite with gitlfs ~ should be ok for about a year of data~ discarded as it turned out this used too much LFS storage
+    - [x] Motherduck free tier
 - [ ] Data pipeline setup? Dbt? Could use an alternative. Total overkill but fun :)
 - [x] Decide on API access method - requests direct pings 
 - [ ] Decide on workflow and code up

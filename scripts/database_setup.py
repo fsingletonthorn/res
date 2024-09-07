@@ -1,56 +1,31 @@
-import sqlite3
+import duckdb
+import os
+from functions.database import create_md_connection
 
-def drop_res_tables(filename):
-    '''A function to drop the RES tables if you want to restart data collection without deleting the database file.
-    Parameters
-    ----------
-    database_loc: sqlite database filepath
+def motherduck_truncate_tables(token = os.environ["MOTHERDUCK_TOKEN"]):
     '''
-    conn = None
-    try:
-        conn = sqlite3.connect(filename)
-        cur = conn.cursor()
-        cur.execute("DROP TABLE download")
-        cur.execute("DROP TABLE raw_sale_listing;")
-        cur.execute("DROP TABLE raw_sold_listing;")
-    except sqlite3.Error as e:
-        print(e)
-    finally:
-        if conn:
-            conn.execute("VACUUM")
-            conn.close()
+    Warning - this will drop all data.
+    '''
+    conn = create_md_connection(token)
+    conn.sql('truncate table res.raw.sale_listing')
+    conn.sql('truncate table res.raw.sold_listing')
+    conn.sql('truncate table res.raw.download')
 
-# drop_res_tables('res_database.db')
+def motherduck_setup_raw(token = os.environ["MOTHERDUCK_TOKEN"]):
+    conn = create_md_connection(token)
+    conn.sql('create database res')
+    conn.sql('use res')
 
-def create_sqlite_database(filename):
-    """ create a SQLite database """
-    conn = None
-    try:
-        conn = sqlite3.connect(filename)
-        print(sqlite3.sqlite_version)
-    except sqlite3.Error as e:
-        print(e)
-    finally:
-        if conn:
-            conn.close()
+    conn.sql('create schema res.raw')
 
-if __name__ == '__main__':
-    create_sqlite_database("res_database.db")
+    ## Creating autoincrements 
+    conn.sql('CREATE or replace SEQUENCE res.raw.seq_download_pk START 1;')
+    conn.sql('CREATE or replace SEQUENCE res.raw.seq_sale_listing_pk START 1;')
+    conn.sql('CREATE or replace SEQUENCE res.raw.seq_sold_listing_pk START 1;')
 
-def create_raw_listings_database(database_loc):
-    """ create empty tables for raw data
-    Parameters
-    ----------
-    database_loc: sqlite database filepath
-    """
-
-    conn = sqlite3.connect(database_loc)
-
-    cur = conn.cursor()
-
-    cur.execute("""
-        create TABLE download (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+    conn.sql("""
+        create TABLE res.raw.download (
+            id INTEGER PRIMARY KEY default nextval('raw.seq_download_pk'),
             download_date TEXT, 
             listed_since_date TEXT,
             max_listed_since_date TEXT,
@@ -65,9 +40,9 @@ def create_raw_listings_database(database_loc):
         ); 
     """)
 
-    cur.execute("""
-            CREATE TABLE raw_sale_listing (
-                id INTEGER PRIMARY KEY AUTOINCREMENT, 
+    conn.sql("""
+            CREATE TABLE res.raw.sale_listing (
+                id INTEGER PRIMARY KEY default nextval('raw.seq_sale_listing_pk'),
                 download_id INTEGER,
                 type TEXT,
                 download_date TEXT,
@@ -131,13 +106,13 @@ def create_raw_listings_database(database_loc):
                 listing_inspectionSchedule_times TEXT,
                 listing_propertyDetails_landArea REAL,
                 listing_propertyDetails_buildingArea REAL,
-                FOREIGN KEY(download_id) REFERENCES download(id)
+                FOREIGN KEY(download_id) REFERENCES raw.download(id)
             ); 
     """)
 
-    cur.execute("""
-            CREATE TABLE raw_sold_listing (
-                id INTEGER PRIMARY KEY AUTOINCREMENT, 
+    conn.sql("""
+            CREATE TABLE res.raw.sold_listing (
+                id INTEGER PRIMARY KEY default nextval('raw.seq_sold_listing_pk'), 
                 download_id INTEGER,
                 type TEXT,
                 download_date TEXT,
@@ -205,16 +180,9 @@ def create_raw_listings_database(database_loc):
                 listing_soldData_saleMethod TEXT,
                 listing_soldData_soldDate TEXT,
                 listing_soldData_soldPrice REAL,
-                FOREIGN KEY(download_id) REFERENCES download(id)
+                FOREIGN KEY(download_id) REFERENCES raw.download(id)
             ); 
-    """)
+        """)
 
     conn.commit()
     conn.close()
-
-if __name__ == '__main__':
-    create_raw_listings_database("res_database.db")
-
-
-
-

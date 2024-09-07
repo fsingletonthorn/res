@@ -1,80 +1,114 @@
-import sqlite3
+import duckdb
 import pandas as pd
 import datetime as dt
 import pytz
+import os
+
+def create_md_connection(token):
+    con = duckdb.connect(f'md:?motherduck_token={token}') 
+    con.sql("use res")
+    return con
 
 # Grab last uploaded date: 
 ## Get parameters
-def get_last_download_metadata(database_loc, listing_type = 'Sale'):
+def get_last_download_metadata(listing_type = 'Sale', md_token = os.environ["MOTHERDUCK_TOKEN"]):
     """
     A helper function that downloads the latest results from the download table containing metadata on the downloads that have been completed by RES.
     
     Parameters
     ----------
-    database_loc: str
-        The filepath to your database including file extension. 
     listing_type: str
         Whether to download Sale listings or Sold properties. Enter either 'Sold' or 'Sale'. Injected straight into the sql query string so user beware.
         Default: Sale
+    md_token: str
+        Motherduck access token
     """
-    conn = sqlite3.connect(database_loc)
+    conn = create_md_connection(md_token)
 
-    out = pd.read_sql(f'SELECT * FROM download where listing_type = "{listing_type}" ORDER BY id DESC LIMIT 1;', conn)
+    out = conn.sql(f"SELECT * FROM res.raw.download where listing_type = '{listing_type}' ORDER BY id DESC LIMIT 1;").to_df()
     conn.close()
     return(out)
 
-def get_metadata(database_loc):
+def get_metadata(md_token = os.environ["MOTHERDUCK_TOKEN"]):
     """
     A helper function that downloads the download table containing metadata on the downloads that have been completed by RES.
     
     Parameters
     ----------
-    database_loc: str
-        The filepath to your database including file extension. 
+    md_token: str
+        A Motherduck token to connect to the Motherduck db
     """
-    conn = sqlite3.connect(database_loc)
-    out = pd.read_sql('SELECT * FROM download;', conn)
+    conn = create_md_connection(md_token)
+    out = conn.sql('SELECT * FROM res.raw.download;').to_df()
     conn.close()
     return(out)
 
-def get_raw_sale_listings(database_loc):
+def get_raw_sale_listings(md_token = os.environ["MOTHERDUCK_TOKEN"]):
     """
-    A helper function that downloads the download table containing metadata on the downloads that have been completed by RES.
+    A helper function that downloads the sale listing table containing metadata on the downloads that have been completed by RES.
     
     Parameters
     ----------
-    database_loc: str
-        The filepath to your database including file extension. 
+    md_token: str
+        A Motherduck token to connect to the Motherduck db
     """
-    conn = sqlite3.connect(database_loc)
-    out = pd.read_sql('SELECT * FROM raw_sale_listing;', conn)
+    conn = create_md_connection(md_token)
+    out = conn.sql('SELECT * FROM res.raw.sale_listing;').to_df()
     conn.close()
     return(out)
 
-def get_raw_sold_listings(database_loc):
+def get_raw_sold_listings(md_token = os.environ["MOTHERDUCK_TOKEN"]):
     """
-    A helper function that downloads the download table containing metadata on the downloads that have been completed by RES.
+    A helper function that downloads the sold listings table containing metadata on the downloads that have been completed by RES.
     
     Parameters
     ----------
-    database_loc: str
-        The filepath to your database including file extension. 
+    md_token: str
+        A Motherduck token to connect to the Motherduck db
     """
-    conn = sqlite3.connect(database_loc)
-    out = pd.read_sql('SELECT * FROM raw_sold_listing;', conn)
+    conn = create_md_connection(md_token)
+    out = conn.sql('SELECT * FROM res.raw.sold_listing;').to_df()
     conn.close()
     return(out)
 
-def update_listings_tables(raw_output, cleaned_listings):
-    conn = sqlite3.connect("res_database.db")
-    cur = conn.cursor()
+def update_listings_tables(raw_output, cleaned_listings, md_token=os.environ["MOTHERDUCK_TOKEN"]):
+    """
+    This function inserts download metadata and cleaned listings into appropriate
+    tables based on the listing type (Sale or Sold).
 
-    tz = pytz.timezone('Australia/Sydney')
-    sydney_now = dt.datetime.now(tz)
-    listed_since_date = sydney_now
+    Parameters
+    ----------
+    raw_output : dict
+        A dictionary containing metadata about the download, including:
+        listed_since_date, max_listed_since_date, postcode, state, region,
+        area, listing_type, updated_since, and pages_remaining.
+    cleaned_listings : pandas.DataFrame
+        A DataFrame containing the cleaned listings data to be inserted.
+    md_token : str, optional
+        The MotherDuck token for database connection. Defaults to the
+        "MOTHERDUCK_TOKEN" environment variable.
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    ValueError
+        If the listing_type in raw_output is neither 'Sale' nor 'Sold'.
+
+    Notes
+    -----
+    - Requires tables res.raw.download, res.raw.sale_listing, and 
+    res.raw.sold_listing to exist in the connected DuckDB database. 
+    These can be created using the database setup script - scripts\database_setup.py.
+    - Uses "INSERT INTO ... BY NAME" SQL syntax, requiring DataFrame column 
+    names to match table column names.
+    """
+    conn = create_md_connection(md_token)
 
     download_meta = pd.DataFrame({
-        'download_date': [listed_since_date.isoformat()], 
+        'download_date': [raw_output['max_download_date']], 
         'listed_since_date': [raw_output['listed_since_date']],
         'max_listed_since_date': [raw_output['max_listed_since_date']],
         'postcode': [raw_output['postcode']],
@@ -84,27 +118,23 @@ def update_listings_tables(raw_output, cleaned_listings):
         'listing_type': [raw_output['listing_type']],
         'updated_since': [raw_output['updated_since']],
         'pages_remaining': [raw_output['pages_remaining']]
-        })
+    })
 
-    download_meta.to_sql('download', conn, if_exists='append', index=False)
+    conn.sql("INSERT INTO res.raw.download BY NAME SELECT * FROM download_meta")
+    max_download_id = conn.sql("SELECT max(id) as download_id FROM res.raw.download;").df()
 
-    # pd.read_sql('select * from download;', conn)
-
-    max_download_id = pd.read_sql('select max(id) as download_id from download;', conn)
-
-    ## Striping object types of
     all_listings_for_upload = cleaned_listings.convert_dtypes().infer_objects()
     all_listings_for_upload.update(all_listings_for_upload.select_dtypes('object').astype(str))
     all_listings_for_upload['download_id'] = max_download_id['download_id'][0]
 
     if download_meta.listing_type[0] == 'Sale': 
-        all_listings_for_upload.to_sql('raw_sale_listing', conn, if_exists='append', index=False)
+        conn.sql("INSERT INTO res.raw.sale_listing BY NAME SELECT * FROM all_listings_for_upload")
     elif download_meta.listing_type[0] == 'Sold':
-        all_listings_for_upload.to_sql('raw_sold_listing', conn, if_exists='append', index=False)
+        conn.sql("INSERT INTO res.raw.sold_listing BY NAME SELECT * FROM all_listings_for_upload")
     else:
-        raise ValueError('download_meta.listing_type not recognized: "' + str(download_meta.listing_type) + '", not "Sale" or "Sold"')        
+        raise ValueError(f'download_meta.listing_type not recognized: "{download_meta.listing_type[0]}", not "Sale" or "Sold"')
 
     conn.execute("VACUUM")
     conn.commit()
 
-    cur.close()
+    conn.close()

@@ -98,7 +98,6 @@ def residential_listings_search(
     """
 
     tz = pytz.timezone('Australia/Sydney')
-    download_date = dt.datetime.now(tz).isoformat()
     batch_listed_since = listed_since
 
     def download_page(page_number: int, batch_listed_since: str) -> requests.Response:
@@ -148,8 +147,9 @@ def residential_listings_search(
                 raise ValueError('Error: Request returns 0 records, check search parameters')
             
             listings = response.json()
+            last_download_date = dt.datetime.now(tz).isoformat()
             for listing in listings:
-                listing['download_date'] = download_date
+                listing['download_date'] = last_download_date
             batch_listings.extend(listings)
             
             records_downloaded = len(all_listings) + len(batch_listings)
@@ -198,6 +198,7 @@ def residential_listings_search(
     return {
         'listed_since_date': listed_since,
         'max_listed_since_date': max_date_listed.isoformat() if max_date_listed else None,
+        'max_download_date': last_download_date,
         'listings': listings_dict,
         'postcode': postcode,
         'state': state,
