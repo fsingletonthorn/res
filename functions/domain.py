@@ -131,8 +131,6 @@ def residential_listings_search(
     
     while True:
         batch_listings = []
-        if batch_listed_since != '':
-            (dt.datetime.fromisoformat(batch_listed_since) - dt.timedelta(seconds=1)).isoformat()
 
         for page_in_batch in range(1, 11):  # API limit of 10 pages per query
             overall_page_number += 1
