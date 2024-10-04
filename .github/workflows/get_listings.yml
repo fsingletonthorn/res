@@ -30,14 +30,14 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run get_sold_listings
-        env:
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          MOTHERDUCK_TOKEN:  ${{ secrets.MOTHERDUCK_TOKEN }}
-        run: |
-          python -m scripts.get_sold_listings
-        continue-on-error: true
+      # - name: Run get_sold_listings
+      #   env:
+      #     CLIENT_ID: ${{ secrets.CLIENT_ID }}
+      #     CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+      #     MOTHERDUCK_TOKEN:  ${{ secrets.MOTHERDUCK_TOKEN }}
+      #   run: |
+      #     python -m scripts.get_sold_listings
+      #   continue-on-error: true
 
       - name: Run get_sale_listings
         env:
