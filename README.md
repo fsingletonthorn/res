@@ -23,14 +23,6 @@ Project planning:
     - [x] Order by listed date
     - [x] Download from latest listing date to 1000 pages, then resume downloading from last listed date next day. Error out and stop if there are no records to download. 
 - [x] Write up download script and connect to data store
-- [ ] Setup Github actions to orchestrate
-- [ ] Pull sales data for properties as appropriate
-    - [ ] Decide on approach - e.g., take long list, ping each that hasn't been checked in x days, that has been up for at least x days
-    - [ ] Or we could just pull all sales since the last update - looking at usage quotas we're pretty close to being able to do that now
-
-
-- Plan: 
--- Select all records that were updated after the last listed date from the last download
--- Store all records
--- This will create some duplicates due to issues with the last listed date in the database
--- Not necessarily a problem, will ensure that we're capturing all records and we can dedupe later
+- [x] Setup Github actions to orchestrate
+- [x] Pull sales data for properties as appropriate
+    - [x] Download all sales listings since the sales started being pulled, download all new listings as they come (i.e., after last download's last listing date).
