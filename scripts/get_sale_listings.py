@@ -27,7 +27,7 @@ if len(latest_metadata) > 0:
 else:
     tz = pytz.timezone('Australia/Sydney')
     sydney_now = dt.datetime.now(tz)
-    listed_since_date = (sydney_now - dt.timedelta(days=14)).isoformat()
+    listed_since_date = (sydney_now - dt.timedelta(days=1)).isoformat()
 
 output = residential_listings_search(access_token = access_token,                        
                             request_session = s,
@@ -37,9 +37,11 @@ output = residential_listings_search(access_token = access_token,
                             area = '',
                             listing_type = 'Sale',
                             updated_since = '', #(dt.datetime.today() - dt.timedelta(days=10)).isoformat()
-                            listed_since =  listed_since_date)
+                            listed_since =  listed_since_date,
+                            debug = False)
 
-all_listings = clean_listings(output)
+all_listings = clean_listings(output,
+                            debug = False)
 
 if len(all_listings) > 0:
     update_listings_tables(raw_output= output,cleaned_listings= all_listings)

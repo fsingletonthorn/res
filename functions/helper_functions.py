@@ -1,6 +1,6 @@
 import pandas as pd
 
-def clean_listings(residential_listings_search_output):
+def clean_listings(residential_listings_search_output, debug = False):
     """
     A function to take residential_listings_search() output and convert it into a flat table.
     
@@ -9,6 +9,10 @@ def clean_listings(residential_listings_search_output):
     residential_listings_search_output: obj
         The results of residential_listings_search(...) to b cleaned
     """
+    if debug:
+        print('Total listings: '+ str(len(residential_listings_search_output['listings'])))
+        print('Total unique listings by string: ' + str(len(set(residential_listings_search_output['listings'].keys()))))
+
     # Now dealing with the nested data
     listings = [value for value in residential_listings_search_output['listings'].values()]
 
@@ -32,6 +36,9 @@ def clean_listings(residential_listings_search_output):
         ## Dropping dupe col
         project_listings_w_meta = project_listings_w_meta.drop('listing.projectId', axis = 1)
 
+        if debug:
+            print('Debug - Project listing ids duplicated: ' + str(project_listings_w_meta['listing.id'].duplicated().sum()))
+
         # Concatinating all listings together, dropping nested listings col (now joined on)
         all_listings = pd.concat([project_listings_w_meta, property_listings], ignore_index = True).drop('listings', axis = 1)
 
@@ -39,6 +46,9 @@ def clean_listings(residential_listings_search_output):
         all_listings = property_listings.drop('listings', axis = 1)
     else: 
         all_listings = property_listings
+    
+    if debug:
+        print('Debug - all listing ids duplicated: ' + str(all_listings['listing.id'].duplicated().sum()))
 
     all_listings.columns = (all_listings.columns
                     .str.replace('.', '_', regex=False)

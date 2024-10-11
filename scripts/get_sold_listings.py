@@ -2,7 +2,7 @@ import requests
 import datetime as dt
 from requests.adapters import HTTPAdapter, Retry
 from functions.domain import get_domain_access_token,residential_listings_search
-from functions.database import get_last_download_metadata, update_listings_tables
+from functions.database import get_last_download_metadata, update_listings_tables, create_md_connection
 from functions.helper_functions import clean_listings
 import pytz
 import os
@@ -23,19 +23,23 @@ latest_metadata =  get_last_download_metadata(listing_type = 'Sold', md_token=os
 
 ## Grabbing the last downloaded date from the last download's metadata. This is used to set when we download from. 
 if len(latest_metadata) > 0:
-    updated_since_date = latest_metadata.download_date[0]
+    listed_since_date = latest_metadata.max_listed_since_date[0]
 else: 
-    tz = pytz.timezone('Australia/Sydney')
-    sydney_now = dt.datetime.now(tz)
-    updated_since_date = (sydney_now - dt.timedelta(days=14)).isoformat()
+    # when there are 
+    conn = create_md_connection(token=os.environ["MOTHERDUCK_TOKEN"])
+    out = conn.sql(f"SELECT listed_since_date FROM res.raw.download where listing_type = 'Sale' ORDER BY id LIMIT 1;").to_df()
+    listed_since_date = out['listed_since_date'][0]
+    conn.close()
 
 output = residential_listings_search(access_token = access_token,                        
                             request_session = s,
                             listing_type = 'Sold',
-                            updated_since = updated_since_date,
-                            listed_since =  '')
+                            updated_since = '',
+                            listed_since =  listed_since_date,
+                            debug = False)
 
-all_listings = clean_listings(output)
+all_listings = clean_listings(output,
+                            debug = False)
 
 if len(all_listings) > 0:
     update_listings_tables(output, all_listings)

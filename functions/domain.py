@@ -1,6 +1,7 @@
 # Grabbing access token
 import yaml
 import requests
+import json
 
 def get_domain_access_token(session, client_id, client_secret):
     """
@@ -56,7 +57,8 @@ def residential_listings_search(
     listing_type: str = 'Sale',
     updated_since: str = '',
     listed_since: str = '',
-    verbose: bool = True
+    verbose: bool = True,
+    debug: bool = False
 ) -> Dict[str, Any]:
     """
     Search for residential listings using the Domain API, downloading all available results.
@@ -186,12 +188,40 @@ def residential_listings_search(
             batch_listed_since = max_date_listed.isoformat()
     
     # Deduplicate listings
-    listings_dict = {}
-    for item in all_listings:
-        if item['type'] == 'Project':
-            listings_dict[f"project_{item['project']['id']}"] = item
-        elif item['type'] == 'PropertyListing':
-            listings_dict[f"listing_{item['listing']['id']}"] = item
+    if debug: 
+        listings_dict = {}
+        duplicate_count = 0
+
+        for item in all_listings:
+            if item['type'] == 'Project':
+                key = f"project_{item['project']['id']}"
+            elif item['type'] == 'PropertyListing':
+                key = f"listing_{item['listing']['id']}"
+            else:
+                continue  # Skip unknown types
+
+            if key in listings_dict:
+                duplicate_count += 1
+                print(f"Duplicate found for {key}")
+                print("Original:", json.dumps(listings_dict[key], indent=2))
+                print("Duplicate:", json.dumps(item, indent=2))
+                print("Differences:")
+                for k in set(listings_dict[key].keys()) | set(item.keys()):
+                    if k not in listings_dict[key] or k not in item or listings_dict[key][k] != item[k]:
+                        print(f"  {k}:")
+                        print(f"    Original: {listings_dict[key].get(k)}")
+                        print(f"    Duplicate: {item.get(k)}")
+            
+            listings_dict[key] = item
+        print(f"Total duplicates found: {duplicate_count}")
+    else:
+        listings_dict = {}
+        for item in all_listings:
+            if item['type'] == 'Project':
+                listings_dict[f"project_{item['project']['id']}"] = item
+            elif item['type'] == 'PropertyListing':
+                listings_dict[f"listing_{item['listing']['id']}"] = item
+
     
     return {
         'listed_since_date': listed_since,
