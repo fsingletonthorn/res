@@ -22,7 +22,7 @@ def extract_price_info(df, price_column):
             return '$' in s or any(word in s.lower() for word in ['price', 'offer', 'auction', 'guide', 'from'])
 
         # Extract price information
-        price_pattern = r'\$?\s*([\d\s]+(?:\.\d+)?[km]?)(?:\s*-\s*\$?\s*([\d\s]+(?:\.\d+)?[km]?))?'
+        price_pattern = r'\$?\s*([\d,.]+(?:\.\d+)?[km]?)(?:\s*-\s*\$?\s*([\d,.]+(?:\.\d+)?[km]?))?'
         matches = re.findall(price_pattern, price, re.IGNORECASE)
         
         valid_prices = [match for match in matches if is_likely_price(match[0])]
@@ -31,12 +31,12 @@ def extract_price_info(df, price_column):
             numbers = [convert_to_full_number(num) for match in valid_prices for num in match if num]
             
             if len(numbers) == 1:
-                return pd.Series({'no_price_provided': False, 'point_estimate': numbers[0], 'lower_bound': None, 'upper_bound': None})
-            elif len(numbers) >= 2:
+                return pd.Series({'no_price_provided': False, 'point_estimate': numbers[0], 'lower_bound': numbers[0], 'upper_bound': numbers[0]})
+            elif len(numbers) == 2:
                 return pd.Series({'no_price_provided': False, 'point_estimate': None, 'lower_bound': min(numbers), 'upper_bound': max(numbers)})
         
         # Check for "offers over" or similar patterns
-        offer_pattern = r'(?:from|over|above|starting|offers|guide)\s+\$?\s*([\d\s]+(?:\.\d+)?[km]?)'
+        offer_pattern = r'(?:from|over|above|starting|offers|guide)\s+\$?\s*([\d,.]+(?:\.\d+)?[km]?)'
         offer_match = re.search(offer_pattern, price, re.IGNORECASE)
         
         if offer_match:
