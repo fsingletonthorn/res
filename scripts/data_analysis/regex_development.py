@@ -1,5 +1,6 @@
 import pandas as pd
 import re
+# from functions.helper_functions import extract_price_info
 
 def extract_price_info(df, price_column):
     def process_price(price):
@@ -18,9 +19,9 @@ def extract_price_info(df, price_column):
                 return float(num_str)
 
         # Extract price information
-        price_range_pattern = r'\$?\s*([\d.]+(?:k|m)?)\s*(?:-|to)\s*\$?\s*([\d.]+(?:k|m)?)'
-        single_price_pattern = r'\$\s*([\d.]+(?:k|m)?)'
-        offers_above_pattern = r'(?:from|over|above|starting|offers|guide\+)\s*\$?\s*([\d.]+(?:k|m)?)'
+        price_range_pattern = r'\$?\s*([\d,.]+(?:k|m)?)\s*(?:-|to)\s*\$?\s*([\d,.]+(?:k|m)?)'
+        single_price_pattern = r'\$\s*([\d,.]+(?:k|m)?)'
+        offers_above_pattern = r'(?:from|over|above|starting|offers\+)\s*\$?\s*([\d,.]+(?:k|m)?)'
         
         # Check for price range (e.g., $550,000 - $600,000)
         range_match = re.search(price_range_pattern, price, re.IGNORECASE)
@@ -28,7 +29,6 @@ def extract_price_info(df, price_column):
             lower = convert_to_full_number(range_match.group(1))
             upper = convert_to_full_number(range_match.group(2))
             return pd.Series({'no_price_provided': False, 'point_estimate': None, 'lower_bound': lower, 'upper_bound': upper})
-        
 
         # Check for "offers over" or similar patterns
         offer_match = re.search(offers_above_pattern, price, re.IGNORECASE)
@@ -53,8 +53,7 @@ def extract_price_info(df, price_column):
 
 sale_data = pd.read_csv('data/latest_sale_listings.csv')
 
-subset_for_testing=sale_data.dropna(subset=['listing_priceDetails_displayPrice']
-                                    ).sample(n=100).filter(
+subset_for_testing=sale_data.sample(n=250, random_state=42).filter(
                                         [   
                                             'listing_id',
                                             'listing_priceDetails_displayPrice',
@@ -66,4 +65,7 @@ subset_for_testing=sale_data.dropna(subset=['listing_priceDetails_displayPrice']
 
 # subset_for_testing['estimated_price'] =
 output = extract_price_info(subset_for_testing, 'listing_priceDetails_displayPrice')
-output.to_csv('test_cases_with_additional_data_7.csv')
+
+output.to_csv('data/regex_test_cases.csv')
+
+
