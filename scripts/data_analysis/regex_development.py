@@ -20,7 +20,7 @@ def extract_price_info(df, price_column):
                 return float(num_str)
 
         # Extract price information
-        number_pattern = '([\d,.]+(?:k(?!m)|m(?!2))?)'
+        number_pattern = '(\d{1,6}(?:[,.\s]\d{3})*(?:k(?!m)|m(?!2))?)' ## '(\d{1,3}(?:[,.\s]\d{3})*(?:k(?!m)|m(?!2))?)'
         price_range_pattern = rf'\$?\s*{number_pattern}\s*(?:-|to)\s*\$?\s*{number_pattern}'
         single_price_pattern = rf'\$\s*{number_pattern}'
         offers_above_pattern = rf'(?:from|over|above|starting|offers\+)\s*\$?\s*{number_pattern}'
