@@ -10,8 +10,11 @@ def extract_price_info(df, price_column):
         
         price = str(price).replace(',', '').lower()
         
-        def convert_to_full_number(num_str):
+        def convert_to_full_number(num_str, shared_suffix=None):  # Added shared_suffix parameter with default None
             num_str = num_str.lower().replace(' ', '')
+            # If there's a shared suffix, append it to the number
+            if shared_suffix:
+                num_str = num_str + shared_suffix
             if 'k' in num_str:
                 return float(num_str.replace('k', '')) * 1000
             elif 'm' in num_str:
@@ -20,11 +23,19 @@ def extract_price_info(df, price_column):
                 return float(num_str)
 
         # Extract price information
-        number_pattern = '(\d{1,6}(?:[,.\s]\d{3})*(?:k(?!m)|m(?!2))?)' ## '(\d{1,3}(?:[,.\s]\d{3})*(?:k(?!m)|m(?!2))?)'
+        number_pattern = '(\d+(?:\.\d+)?(?:[,.\s]\d{3})*(?:k(?!m)|m(?!2))?)(?!\s+?sqm|am|pm|m2)'
         price_range_pattern = rf'\$?\s*{number_pattern}\s*(?:-|to)\s*\$?\s*{number_pattern}'
         single_price_pattern = rf'\$\s*{number_pattern}'
         offers_above_pattern = rf'(?:from|over|above|starting|offers\+)\s*\$?\s*{number_pattern}'
         
+        price_range_shared_suffix = rf'\s*\$?\s*(\d+(?:\.\d+)?)\s*(?:-|to)\s*(\d+(?:\.\d+)?)(k(?!m)|m(?!2))'
+        # First check for price range with shared suffix
+        shared_suffix_match = re.search(price_range_shared_suffix, price, re.IGNORECASE)
+        if shared_suffix_match and not re.search(r'\d+(?::\d+|am|pm)', price, re.IGNORECASE):
+            lower = convert_to_full_number(shared_suffix_match.group(1), shared_suffix_match.group(3))
+            upper = convert_to_full_number(shared_suffix_match.group(2), shared_suffix_match.group(3))
+            return pd.Series({'no_price_provided': False, 'point_estimate': None, 'lower_bound': lower, 'upper_bound': upper})
+
         # Check for price range (e.g., $550,000 - $600,000)
         range_match = re.search(price_range_pattern, price, re.IGNORECASE)
         if range_match:
