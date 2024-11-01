@@ -10,9 +10,8 @@ def extract_price_info(df, price_column):
         
         price = str(price).replace(',', '').lower()
         
-        def convert_to_full_number(num_str, shared_suffix=None):  # Added shared_suffix parameter with default None
+        def convert_to_full_number(num_str, shared_suffix=None):
             num_str = num_str.lower().replace(' ', '')
-            # If there's a shared suffix, append it to the number
             if shared_suffix:
                 num_str = num_str + shared_suffix
             if 'k' in num_str:
@@ -22,8 +21,12 @@ def extract_price_info(df, price_column):
             else:
                 return float(num_str)
 
+        def validate_prices(*args):
+            """Validate that all non-None price values are >= 10000"""
+            return all(x is None or x >= 10000 for x in args)
+
         # Extract price information
-        number_pattern = '(\d+(?:\.\d+)?(?:[,.\s]\d{3})*(?:k(?!m)|m(?!2))?)(?!\s+?sqm|am|pm|m2)'
+        number_pattern = '(\d+(?:\.\d+)?(?:[,.\s]\d{3})*(?:k(?!m)|m(?!2))?)(?!\s?sqm|am|pm)'
         price_range_pattern = rf'\$?\s*{number_pattern}\s*(?:-|to)\s*\$?\s*{number_pattern}'
         single_price_pattern = rf'\$\s*{number_pattern}'
         offers_above_pattern = rf'(?:from|over|above|starting|offers\+)\s*\$?\s*{number_pattern}'
@@ -34,28 +37,32 @@ def extract_price_info(df, price_column):
         if shared_suffix_match and not re.search(r'\d+(?::\d+|am|pm)', price, re.IGNORECASE):
             lower = convert_to_full_number(shared_suffix_match.group(1), shared_suffix_match.group(3))
             upper = convert_to_full_number(shared_suffix_match.group(2), shared_suffix_match.group(3))
-            return pd.Series({'no_price_provided': False, 'point_estimate': None, 'lower_bound': lower, 'upper_bound': upper})
+            if validate_prices(lower, upper):
+                return pd.Series({'no_price_provided': False, 'point_estimate': None, 'lower_bound': lower, 'upper_bound': upper})
 
         # Check for price range (e.g., $550,000 - $600,000)
         range_match = re.search(price_range_pattern, price, re.IGNORECASE)
         if range_match:
             lower = convert_to_full_number(range_match.group(1))
             upper = convert_to_full_number(range_match.group(2))
-            return pd.Series({'no_price_provided': False, 'point_estimate': None, 'lower_bound': lower, 'upper_bound': upper})
+            if validate_prices(lower, upper):
+                return pd.Series({'no_price_provided': False, 'point_estimate': None, 'lower_bound': lower, 'upper_bound': upper})
 
         # Check for "offers over" or similar patterns
         offer_match = re.search(offers_above_pattern, price, re.IGNORECASE)
         if offer_match:
             offer_price = convert_to_full_number(offer_match.group(1))
-            return pd.Series({'no_price_provided': False, 'point_estimate': None, 'lower_bound': offer_price, 'upper_bound': None})
+            if validate_prices(offer_price):
+                return pd.Series({'no_price_provided': False, 'point_estimate': None, 'lower_bound': offer_price, 'upper_bound': None})
         
         # Check for single price (e.g., $1,150,000)
         single_match = re.search(single_price_pattern, price)
         if single_match:
             point_estimate = convert_to_full_number(single_match.group(1))
-            return pd.Series({'no_price_provided': False, 'point_estimate': point_estimate, 'lower_bound': None, 'upper_bound': None})
+            if validate_prices(point_estimate):
+                return pd.Series({'no_price_provided': False, 'point_estimate': point_estimate, 'lower_bound': None, 'upper_bound': None})
         
-        # If no price information is found
+        # If no price information is found or validation failed
         return pd.Series({'no_price_provided': True, 'point_estimate': None, 'lower_bound': None, 'upper_bound': None})
 
     # Apply the function to the price column
@@ -66,7 +73,7 @@ def extract_price_info(df, price_column):
 
 sale_data = pd.read_csv('data/latest_sale_listings.csv')
 
-subset_for_testing=sale_data.sample(n=250, random_state=42).filter(
+subset_for_testing=sale_data.sample(n=250, random_state=538).filter(
                                         [   
                                             'listing_id',
                                             'listing_priceDetails_displayPrice',
