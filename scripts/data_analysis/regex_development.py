@@ -1,5 +1,6 @@
 import pandas as pd
 import re
+import datetime as dt
 # from functions.helper_functions import extract_price_info
 
 def extract_price_info(df, price_column):
@@ -19,9 +20,10 @@ def extract_price_info(df, price_column):
                 return float(num_str)
 
         # Extract price information
-        price_range_pattern = r'\$?\s*([\d,.]+(?:k|m)?)\s*(?:-|to)\s*\$?\s*([\d,.]+(?:k|m)?)'
-        single_price_pattern = r'\$\s*([\d,.]+(?:k|m)?)'
-        offers_above_pattern = r'(?:from|over|above|starting|offers\+)\s*\$?\s*([\d,.]+(?:k|m)?)'
+        number_pattern = '([\d,.]+(?:k(?!m)|m(?!2))?)'
+        price_range_pattern = rf'\$?\s*{number_pattern}\s*(?:-|to)\s*\$?\s*{number_pattern}'
+        single_price_pattern = rf'\$\s*{number_pattern}'
+        offers_above_pattern = rf'(?:from|over|above|starting|offers\+)\s*\$?\s*{number_pattern}'
         
         # Check for price range (e.g., $550,000 - $600,000)
         range_match = re.search(price_range_pattern, price, re.IGNORECASE)
@@ -66,6 +68,16 @@ subset_for_testing=sale_data.sample(n=250, random_state=42).filter(
 # subset_for_testing['estimated_price'] =
 output = extract_price_info(subset_for_testing, 'listing_priceDetails_displayPrice')
 
-output.to_csv('data/regex_test_cases.csv')
+
+output.to_csv(f'data/regex_test_cases_{dt.datetime.today().date().isoformat()}.csv')
 
 
+
+### NEeed to deal with these:
+## Potentially - drop anything under e.g., 50k, maybe see if we can extend 
+# Incorrect values: 
+# listing_id	listing_priceDetails_displayPrice	listing_priceDetails_price	listing_priceDetails_priceFrom	listing_priceDetails_priceTo	no_price_provided	point_estimate	lower_bound	upper_bound
+# 95362	2019257200	Various Land Sizes from 301 sqm to 368 sqm				FALSE		301	
+# 72038	2019520300	Low-Mid $600's				FALSE	600		
+# 2588	2019449300	Price Guide $1.35-1.45m				FALSE		1.35	1450000
+# 32652	2019482500	GRAND OPENING THIS SATURDAY 1.30-2PM				FALSE		1.3	2
