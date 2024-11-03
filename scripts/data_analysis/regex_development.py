@@ -28,7 +28,7 @@ def extract_price_info(df, price_column):
         # Extract price information
         number_pattern = '(\d+(?:\.\d+)?(?:[,.\s]\d{3})*(?:k(?!m)|m(?!2))?)(?!\s?sqm|am|pm)'
         price_range_pattern = rf'\$?\s*{number_pattern}\s*(?:-|to)\s*\$?\s*{number_pattern}'
-        single_price_pattern = rf'\$\s*{number_pattern}'
+        single_price_pattern = rf'\$?\s*{number_pattern}'
         offers_above_pattern = rf'(?:from|over|above|starting|offers\+)\s*\$?\s*{number_pattern}'
         
         price_range_shared_suffix = rf'\s*\$?\s*(\d+(?:\.\d+)?)\s*(?:-|to)\s*(\d+(?:\.\d+)?)(k(?!m)|m(?!2))'
