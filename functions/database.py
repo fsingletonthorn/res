@@ -1,7 +1,6 @@
 import duckdb
 import pandas as pd
 import datetime as dt
-import pytz
 import os
 
 def create_md_connection(token):
@@ -131,8 +130,12 @@ def update_listings_tables(raw_output, cleaned_listings, md_token=os.environ["MO
         conn.sql("INSERT INTO res.raw.sale_listing BY NAME SELECT * FROM all_listings_for_upload")
     elif download_meta.listing_type[0] == 'Sold':
         conn.sql("INSERT INTO res.raw.sold_listing BY NAME SELECT * FROM all_listings_for_upload")
+    elif download_meta.listing_type[0] == 'Sale Update': 
+        conn.sql("INSERT INTO res.raw.sale_listing BY NAME SELECT * FROM all_listings_for_upload")
+    elif download_meta.listing_type[0] == 'Sold Update':
+        conn.sql("INSERT INTO res.raw.sold_listing BY NAME SELECT * FROM all_listings_for_upload")
     else:
-        raise ValueError(f'download_meta.listing_type not recognized: "{download_meta.listing_type[0]}", not "Sale" or "Sold"')
+        raise ValueError(f'download_meta.listing_type not recognized: "{download_meta.listing_type[0]}", not "Sale", "Sold", "Sale Update" or "Sold Update"')
 
     conn.execute("VACUUM")
     conn.commit()
