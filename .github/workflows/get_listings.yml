@@ -48,13 +48,13 @@ jobs:
           python -m scripts.get_sold_listings
         continue-on-error: true
 
-      - name: Run et_updated_sale_listings
+      - name: Run get_updated_sale_listings
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           MOTHERDUCK_TOKEN:  ${{ secrets.MOTHERDUCK_TOKEN }}
         run: |
-          python -m scripts.et_updated_sale_listings
+          python -m scripts.get_updated_sale_listings
         continue-on-error: true
 
       - name: Run get_updated_sold_listings
