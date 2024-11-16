@@ -12,12 +12,6 @@ def extract_price_info(df, price_column):
         
         # First check for phone numbers and return early if found
         phone_patterns = [
-            # r'\b\d{4}\s?\d{3}\s?\d{3}\b',  # Standard 10-digit number
-            # r'\b\d{2}\s?\d{4}\s?\d{4}\b',  # Alternative 10-digit format
-            # r'\b\+\d{2}\s?\d{1,2}\s?\d{4}\s?\d{4}\b',  # International format
-            # r'\b\(\d{2}\)\s?\d{4}\s?\d{4}\b',  # (XX) XXXX XXXX format
-            # r'\b\d{4}\s?\d{4}\b',  # 8-digit number
-            r'\b\d{3}\s?\d{3}\s?\d{3}\b',  # XXX-XXX-XXX format
             r'\b04\d{2}\s?\d{3}\s?\d{3}\b',  # Mobile starting with 04
             r'\b\+614\d{2}\s?\d{3}\s?\d{3}\b',  # International mobile format
             r'\b1300\s?\d{3}\s?\d{3}\b',  # 1300 numbers
