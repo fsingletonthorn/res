@@ -10,6 +10,24 @@ def extract_price_info(df, price_column):
         
         price = str(price).replace(',', '').lower()
         
+        # First check for phone numbers and return early if found
+        phone_patterns = [
+            # r'\b\d{4}\s?\d{3}\s?\d{3}\b',  # Standard 10-digit number
+            # r'\b\d{2}\s?\d{4}\s?\d{4}\b',  # Alternative 10-digit format
+            # r'\b\+\d{2}\s?\d{1,2}\s?\d{4}\s?\d{4}\b',  # International format
+            # r'\b\(\d{2}\)\s?\d{4}\s?\d{4}\b',  # (XX) XXXX XXXX format
+            # r'\b\d{4}\s?\d{4}\b',  # 8-digit number
+            r'\b\d{3}\s?\d{3}\s?\d{3}\b',  # XXX-XXX-XXX format
+            r'\b04\d{2}\s?\d{3}\s?\d{3}\b',  # Mobile starting with 04
+            r'\b\+614\d{2}\s?\d{3}\s?\d{3}\b',  # International mobile format
+            r'\b1300\s?\d{3}\s?\d{3}\b',  # 1300 numbers
+            r'\b1800\s?\d{3}\s?\d{3}\b'   # 1800 numbers
+        ]
+        
+        # Check if the string contains a phone number
+        if any(re.search(pattern, price) for pattern in phone_patterns):
+            return pd.Series({'no_price_provided': True, 'point_estimate': None, 'lower_bound': None, 'upper_bound': None})
+        
         def convert_to_full_number(num_str, shared_suffix=None):
             num_str = num_str.lower().replace(' ', '')
             if shared_suffix:
@@ -71,9 +89,9 @@ def extract_price_info(df, price_column):
     # Combine the result with the original dataframe
     return pd.concat([df, result], axis=1)
 
-sale_data = pd.read_csv('data/latest_sale_listings.csv')
+sale_data = pd.read_csv('data/latest_sale_listings.csv',low_memory=False)
 
-subset_for_testing=sale_data.sample(n=250, random_state=538).filter(
+subset_for_testing=sale_data.sample(n=250, random_state=53812).filter(
                                         [   
                                             'listing_id',
                                             'listing_priceDetails_displayPrice',
