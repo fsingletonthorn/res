@@ -2,3 +2,4 @@
 __pycache__
 client_credentials.yaml
 .env
+.vscode/settings.json
